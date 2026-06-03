@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Googleマップ診断会＋勉強会 ｜ 申込み</title>
+<meta name="description" content="Googleマップ「お店の設定」を見直すだけで、来客数アップへの具体的改善策を無料診断します。先着10名様。" />
+<!--
+  📝 開催ごとの切り替え手順
+  ─────────────────────────────
+  スプレッドシートの「設定」シートを更新するだけでOK。
+  index.htmlの再アップロードは不要です。
+
+  設定シートで変更するもの：
+  ① 開催日      → カレンダーで新しい日付を選択（eventIdは自動生成）
+  ② タイトル・時間・会場・定員 など
+  ③ 地図リンク・地図埋込URL（会場が変わる場合）
+
+  ※ index.htmlの EVENT_CONFIG はフォールバック値。
+    ページ読み込み時にスプレッドシートの値で自動上書きされます。
+  ─────────────────────────────
+-->
+
+<script>
+window.EVENT_CONFIG = {
+  gasUrl: "https://script.google.com/macros/s/AKfycbz0N95BpSCnSUxojul3Pq1VfYrOrmF3z4VRMWGbN4kC4dmr3GfPwPmhX1jOBDvfFVEp/exec",
+
+  eventId: "2026-05-22",
+  title: "Googleマップ診断会＋勉強会",
+  subtitle: "先着10名様",
+  capacity: 10,
+  catchCopy: "Googleマップ「お店の設定」を見直すだけで、来客数アップへの具体的改善策を無料診断します。",
+
+  date: "2026年4月17日（金）",
+  time: "14:00 〜 15:30",
+  duration: "90分",
+  fee: "無料",
+  venue: {
+    name: "Café＆Bar ツボバル",
+    address: "（住所）",
+    mapUrl: "https://maps.app.goo.gl/rYUED1nsaJ7CEat17",
+    parking: "先着4台店舗前 / 近隣コインパーキングあり（有料）"
+  },
+
+  schedule: [
+    { time: "14:00", title: "Googleマップ基礎講座", desc: "ローカル検索の仕組みと、見られる店舗情報の整え方" },
+    { time: "14:30", title: "セルフ診断・質疑応答", desc: "ご自身のビジネスプロフィールを開き、その場で改善ポイントを洗い出し" },
+    { time: "15:30", title: "終了", desc: "希望者は名刺交換・個別相談" }
+  ],
+
+  targetIndustries: ["飲食店","美容室","エステ","小売店","ホテル","整骨院","鍼灸院","歯医者","クリニック"],
+  requirements: [
+    "当日、パソコンまたはタブレットをご持参いただける方",
+    "お店やサービスを運営している方（運営者本人または集客担当者）"
+  ],
+
+  theme: { accent: "#4285F4", accent2: "#EA4335" }
+};
+</script>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+JP:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --bg-2: #F8F9FA;
+    --surface: #FFFFFF;
+    --surface-2: #F1F3F4;
+    --line: rgba(0,0,0,0.12);
+    --line-strong: rgba(0,0,0,0.22);
+    --fg: #202124;
+    --fg-dim: #5F6368;
+    --fg-mute: #9AA0A6;
+    --accent:   #4285F4;  /* Google Blue */
+    --accent-r: #EA4335;  /* Google Red  */
+    --accent-g: #34A853;  /* Google Green*/
+    --accent-y: #FBBC05;  /* Google Yellow*/
+    --danger: #EA4335;
+    --ok: #34A853;
+  }
+  *{ -webkit-font-smoothing:antialiased; box-sizing:border-box; }
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Noto Sans JP', 'Inter', system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+  .font-display { font-family: 'Inter', 'Noto Sans JP', sans-serif; letter-spacing: -0.02em; }
+  .font-mono    { font-family: 'JetBrains Mono', monospace; }
+  .font-jp      { font-family: 'Noto Sans JP', sans-serif; }
+
+  /* Google-color top bar */
+  .g-topbar {
+    height: 4px;
+    background: linear-gradient(90deg, #4285F4 0%, #EA4335 33%, #FBBC05 66%, #34A853 100%);
+  }
+
+  /* Hero orbs */
+  .orb {
+    position:absolute; border-radius:50%;
+    filter: blur(100px); opacity:.18; pointer-events:none;
+  }
+  @keyframes float-orb {
+    0%,100%{ transform:translate(0,0) scale(1); }
+    33%{ transform:translate(-20px,-28px) scale(1.06); }
+    66%{ transform:translate(14px,18px) scale(0.95); }
+  }
+  @keyframes float-orb-2 {
+    0%,100%{ transform:translate(0,0) scale(1); }
+    33%{ transform:translate(22px,22px) scale(1.07); }
+    66%{ transform:translate(-14px,-20px) scale(0.95); }
+  }
+
+  /* Hero gradient background */
+  .hero-bg {
+    background: linear-gradient(160deg, #EAF2FE 0%, #FEF9EC 40%, #E6F4EA 70%, #FDECEA 100%);
+  }
+
+  /* Buttons */
+  @keyframes cta-pulse {
+    0%,100%{ box-shadow: 0 4px 24px rgba(66,133,244,.45); }
+    50%{ box-shadow: 0 8px 48px rgba(66,133,244,.75), 0 0 80px rgba(66,133,244,.25); }
+  }
+  .btn-primary{
+    position:relative; isolation:isolate;
+    background: #4285F4;
+    color:#fff; font-weight:500;
+    transition: background .2s ease, transform .15s ease, box-shadow .25s ease;
+    animation: cta-pulse 2.8s ease-in-out infinite;
+    border-radius: 24px;
+  }
+  .btn-primary:hover{
+    background: #3367D6;
+    animation: none;
+    box-shadow: 0 8px 36px rgba(66,133,244,.6);
+    transform: translateY(-2px) scale(1.02);
+  }
+  .btn-primary:disabled{ filter: grayscale(1); cursor: not-allowed; opacity:.55; animation:none; }
+  a.btn-ghost, button.btn-ghost, .btn-ghost{
+    background: rgba(0,0,0,.04);
+    border: 1px solid var(--line);
+    transition: all .2s ease;
+    color: var(--fg);
+    border-radius: 24px;
+  }
+  a.btn-ghost:hover, button.btn-ghost:hover, .btn-ghost:hover{
+    background: rgba(66,133,244,.06); border-color: rgba(66,133,244,.4); color: var(--accent);
+  }
+
+  /* Card — Material elevation style */
+  .card{
+    background: #FFFFFF;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
+  }
+  .card-hover{ transition: transform .3s cubic-bezier(.2,.7,.2,1), box-shadow .3s; transform-style: preserve-3d; }
+  .card-hover:hover{ box-shadow: 0 8px 28px rgba(0,0,0,.12), 0 4px 10px rgba(0,0,0,.08); }
+
+  /* Inputs */
+  .field{
+    width:100%; background: #FFFFFF;
+    border: 1px solid #DADCE0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    color: var(--fg); font-size: 16px;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .field::placeholder{ color: var(--fg-mute); }
+  .field:focus{
+    outline:none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(66,133,244,.15);
+  }
+  .field-error{ border-color: var(--danger) !important; }
+
+  /* Checkbox */
+  .cbx{ position:relative; cursor:pointer; user-select:none; }
+  .cbx input{ position:absolute; opacity:0; inset:0; cursor:pointer; }
+  .cbx .box{
+    width:20px; height:20px; border-radius:4px;
+    border:2px solid #DADCE0;
+    background: #fff;
+    display:inline-flex; align-items:center; justify-content:center;
+    transition: all .2s;
+  }
+  .cbx input:checked + .box{ background: var(--accent); border-color: var(--accent); }
+  .cbx .check{ opacity:0; transition: opacity .15s; color:#fff; }
+  .cbx input:checked + .box .check{ opacity:1; }
+  .cbx:hover .box{ border-color: var(--accent); }
+
+  /* Pill chip */
+  .chip{
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 8px 16px; border-radius: 24px;
+    background: #EAF2FE; border: 1px solid #C5D9FC;
+    font-size:14px; color: #174EA6;
+    transition: all .2s;
+  }
+  .chip:hover{ background:#C5D9FC; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(66,133,244,.2); }
+
+  /* Eyebrow */
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .eyebrow::before{ content:""; display:inline-block; width:24px; height:2px; background:var(--accent); border-radius:1px; }
+
+  /* Section titles */
+  h2.section-title{
+    font-family: 'Inter','Noto Sans JP', sans-serif;
+    font-weight: 700; font-size: clamp(26px,4vw,44px);
+    line-height: 1.2; letter-spacing: -0.02em; color: var(--fg);
+  }
+  .hero-title{
+    font-family: 'Inter','Noto Sans JP', sans-serif;
+    font-weight: 800; font-size: clamp(36px,6vw,80px);
+    line-height: 1.05; letter-spacing: -0.035em; color: var(--fg);
+  }
+  .hero-title .g-gradient{
+    background: linear-gradient(135deg, #4285F4 0%, #EA4335 40%, #FBBC05 70%, #34A853 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .reveal-line{ overflow:hidden; display:block; }
+
+  /* Google-color dots decoration */
+  .g-dots { display:flex; gap:8px; align-items:center; }
+  .g-dot { width:14px; height:14px; border-radius:50%; }
+
+  /* Seats */
+  .seats-num{ font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
+  .magnet{ display:inline-block; will-change:transform; }
+
+  /* Timeline */
+  .tl-line{
+    position:absolute; left:20px; top:0; bottom:0; width:3px;
+    background: linear-gradient(180deg, #4285F4, #EA4335, #FBBC05, #34A853);
+    transform-origin: top; border-radius:2px;
+  }
+  @media (min-width:768px){ .tl-line{ left:30px; } }
+
+  /* SOLD OUT */
+  .stamp{
+    font-family:'Inter',sans-serif; font-weight:900; font-size:28px;
+    letter-spacing:.1em; color:var(--danger);
+    border:4px solid var(--danger); padding:6px 18px;
+    border-radius:6px; transform:rotate(-8deg); opacity:0;
+  }
+
+  /* Skeleton */
+  .skeleton{
+    background: linear-gradient(90deg, rgba(0,0,0,.04) 0%, rgba(0,0,0,.1) 50%, rgba(0,0,0,.04) 100%);
+    background-size:200% 100%; animation:shimmer 1.4s linear infinite;
+    color:transparent !important; border-radius:8px;
+  }
+  @keyframes shimmer{ 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+
+  /* Modal */
+  .modal-backdrop{
+    position:fixed; inset:0; z-index:80;
+    background:rgba(0,0,0,.55); backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .3s ease;
+  }
+  .modal-backdrop.open{ opacity:1; pointer-events:auto; }
+
+  /* Map container responsive */
+  .map-wrap{ position:relative; padding-bottom:56.25%; height:0; overflow:hidden; border-radius:12px; }
+  .map-wrap iframe{ position:absolute; top:0; left:0; width:100%; height:100%; border:0; }
+
+  /* Section pad */
+  .section-pad{ padding:clamp(64px,10vw,128px) 0; }
+
+  ::selection{ background:var(--accent); color:#fff; }
+
+  @media (prefers-reduced-motion:reduce){
+    *, *::before, *::after{ animation:none !important; transition:none !important; }
+  }
+
+  html.lenis, html.lenis body{ height:auto; }
+  .lenis.lenis-smooth{ scroll-behavior:auto !important; }
+
+  /* Nav hover */
+  #topnav nav a:hover{ color:var(--accent); }
+
+  /* Footer links */
+  .footer-link{ color:var(--fg-mute); font-size:13px; transition:color .2s; }
+  .footer-link:hover{ color:var(--accent); }
+
+  /* Google badge */
+  .g-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    background:#F8F9FA; border:1px solid var(--line);
+    border-radius:999px; padding:4px 12px;
+    font-size:12px; color:var(--fg-dim);
+  }
+
+  /* Mobile optimizations */
+  @media (max-width:640px){
+    .hero-title{ font-size: clamp(32px, 8vw, 52px); }
+    h2.section-title{ font-size: clamp(22px, 6vw, 32px); }
+    .section-pad{ padding: 48px 0; }
+  }
+</style>
+</head>
+
+<body class="overflow-x-hidden">
+
+<!-- Google-color top accent bar -->
+<div class="g-topbar w-full fixed top-0 left-0 z-[60]"></div>
+
+<!-- ====================== NAV ====================== -->
+<header class="fixed top-1 inset-x-0 z-50 transition-all duration-300" id="topnav">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-3 flex items-center justify-between">
+    <a href="https://search-mania.net/" target="_blank" rel="noopener" class="flex items-center">
+      <span style="background:linear-gradient(135deg,#4285F4,#34A853); border-radius:14px; padding:8px 20px; display:inline-flex; align-items:center; justify-content:center;">
+        <span style="color:#fff; font-family:'Inter','Noto Sans JP',sans-serif; font-weight:700; font-size:16px; letter-spacing:-0.02em; white-space:nowrap;">SearchMania Inc.</span>
+      </span>
+    </a>
+    <nav class="hidden md:flex items-center gap-6 text-sm" style="color:var(--fg-dim);">
+      <a href="#about" class="transition hover:text-[#4285F4]">概要</a>
+      <a href="#schedule" class="transition hover:text-[#4285F4]">タイムライン</a>
+      <a href="#apply" class="btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm" style="animation:none; border-radius:24px;">
+        <span>無料で申込む</span>
+        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+      </a>
+    </nav>
+    <a href="#apply" class="md:hidden btn-primary px-4 py-2 text-sm" style="animation:none; border-radius:24px;">申込む</a>
+  </div>
+</header>
+
+<!-- ====================== HERO ====================== -->
+<section id="top" class="relative min-h-[100svh] flex items-center pt-28 pb-20 overflow-hidden hero-bg">
+  <!-- Floating orbs -->
+  <div class="orb" style="width:560px;height:560px;background:#4285F4;top:-160px;left:-120px;animation:float-orb 10s ease-in-out infinite;"></div>
+  <div class="orb" style="width:500px;height:500px;background:#34A853;bottom:-160px;right:-100px;animation:float-orb-2 12s ease-in-out infinite;"></div>
+  <div class="orb" style="width:320px;height:320px;background:#EA4335;top:30%;left:55%;animation:float-orb 14s ease-in-out infinite reverse;"></div>
+  <canvas id="particles" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index:1"></canvas>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 w-full relative" style="z-index:2">
+    <div class="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+      <div class="lg:col-span-7">
+        <!-- Google color dots -->
+        <div class="g-dots mb-6" data-anim="up">
+          <div class="g-dot" style="background:#4285F4"></div>
+          <div class="g-dot" style="background:#EA4335"></div>
+          <div class="g-dot" style="background:#FBBC05"></div>
+          <div class="g-dot" style="background:#34A853"></div>
+          <span class="font-mono text-xs ml-2" style="color:var(--fg-mute); letter-spacing:.1em;">MEO WORKSHOP</span>
+        </div>
+
+        <h1 class="hero-title mb-6">
+          <span class="block reveal-line"><span class="reveal-inner">Googleマップで</span></span>
+          <span class="block reveal-line"><span class="reveal-inner"><span class="g-gradient">集客を変える</span>、</span></span>
+          <span class="block reveal-line"><span class="reveal-inner">90分の診断会。</span></span>
+        </h1>
+
+        <p class="text-lg leading-relaxed max-w-xl mb-10" style="color:var(--fg-dim);" data-anim="up" id="catch-copy"></p>
+
+        <div class="flex flex-wrap items-center gap-4 mb-10" data-anim="up">
+          <span class="magnet">
+            <a href="#apply" class="btn-primary inline-flex items-center gap-2 px-8 py-4 text-sm">
+              <i data-lucide="map-pin" class="w-4 h-4"></i>
+              <span>無料で参加申込み</span>
+            </a>
+          </span>
+          <a href="#about" class="btn-ghost inline-flex items-center gap-2 px-6 py-4 text-sm">
+            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            <span>詳細を確認する</span>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl" data-anim="up">
+          <div class="bg-white rounded-xl p-5 shadow-sm border" style="border-color:var(--line);">
+            <div class="font-mono text-xs tracking-widest mb-2 font-semibold" style="color:var(--accent);">DATE</div>
+            <div class="text-lg md:text-xl font-bold leading-tight" style="color:var(--fg);" id="fact-date">—</div>
+          </div>
+          <div class="bg-white rounded-xl p-5 shadow-sm border" style="border-color:var(--line);">
+            <div class="font-mono text-xs tracking-widest mb-2 font-semibold" style="color:var(--accent);">TIME</div>
+            <div class="text-lg md:text-xl font-bold leading-tight" style="color:var(--fg);" id="fact-time">—</div>
+          </div>
+          <div class="bg-white rounded-xl p-5 shadow-sm border" style="border-color:var(--line);">
+            <div class="font-mono text-xs tracking-widest mb-2 font-semibold" style="color:var(--accent);">FEE</div>
+            <div class="text-lg md:text-xl font-bold leading-tight" style="color:var(--fg);" id="fact-fee">—</div>
+          </div>
+          <div class="bg-white rounded-xl p-5 shadow-sm border" style="border-color:var(--line);">
+            <div class="font-mono text-xs tracking-widest mb-2 font-semibold" style="color:var(--accent);">DURATION</div>
+            <div class="text-lg md:text-xl font-bold leading-tight" style="color:var(--fg);" id="fact-dur">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seats card -->
+      <div class="lg:col-span-5" data-anim="right">
+        <div class="card p-8 md:p-10 relative overflow-hidden" style="border-color:#C5D9FC; box-shadow:0 4px 24px rgba(66,133,244,.12);">
+          <div class="absolute -top-20 -right-20 w-48 h-48 rounded-full opacity-20 blur-3xl" style="background:#4285F4"></div>
+
+          <div class="flex items-center justify-between mb-6">
+            <span class="eyebrow">Live availability</span>
+            <span class="flex items-center gap-1.5 text-xs" style="color:var(--fg-dim);">
+              <span class="w-2 h-2 rounded-full" style="background:#34A853; box-shadow:0 0 6px #34A853;"></span>
+              リアルタイム
+            </span>
+          </div>
+
+          <div class="flex items-end gap-3 mb-3">
+            <div class="seats-num font-display font-bold leading-none" style="font-size:clamp(72px,12vw,120px); color:#4285F4;" id="seats-num">--</div>
+            <div class="mb-3">
+              <div class="text-sm" style="color:var(--fg-dim);">/&nbsp;<span id="cap-num">--</span>&nbsp;席</div>
+              <div class="font-mono text-[10px] tracking-widest mt-0.5" style="color:var(--fg-mute);">SEATS LEFT</div>
+            </div>
+          </div>
+
+          <div class="h-2 rounded-full overflow-hidden mb-3" style="background:#E8EAED;">
+            <div id="seats-bar" class="h-full transition-all duration-700 rounded-full" style="width:0%;background:linear-gradient(90deg,#4285F4,#34A853);"></div>
+          </div>
+          <div class="flex items-center justify-between text-xs mb-6" style="color:var(--fg-mute);">
+            <span id="filled-label">— 名が申込済</span>
+            <span id="seats-fallback-note" class="hidden" style="color:#FBBC05;">概算（取得失敗）</span>
+          </div>
+
+          <div id="soldout-state" class="hidden">
+            <div class="stamp mb-4" id="soldout-stamp">SOLD OUT</div>
+            <p class="text-sm mb-4" style="color:var(--fg-dim);">本会は満席となりました。次回開催のご案内は下記からご登録ください。</p>
+          </div>
+
+          <a href="#apply" id="seats-cta" class="btn-primary mt-2 w-full inline-flex items-center justify-center gap-2 px-6 py-4 text-sm">
+            <i data-lucide="hand" class="w-4 h-4"></i>
+            <span>この席を確保する</span>
+          </a>
+
+          <div class="mt-6 pt-6 grid grid-cols-2 gap-4" style="border-top:1px solid var(--line);">
+            <div class="flex items-start gap-2.5">
+              <i data-lucide="users" class="w-4 h-4 mt-0.5" style="color:#4285F4;"></i>
+              <div>
+                <div class="text-xs" style="color:var(--fg-mute);">定員</div>
+                <div class="text-sm font-medium">少人数制</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <i data-lucide="badge-japanese-yen" class="w-4 h-4 mt-0.5" style="color:#34A853;"></i>
+              <div>
+                <div class="text-xs" style="color:var(--fg-mute);">参加費</div>
+                <div class="text-sm font-medium">完全無料</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-2 text-xs justify-end" style="color:var(--fg-mute);">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+          <span>申込みは1分で完了します</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== ABOUT / 業種 ====================== -->
+<section id="about" class="section-pad" style="background:var(--bg-2);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+
+    <!-- おすすめな方 -->
+    <div class="text-center max-w-2xl mx-auto mb-12" data-anim="up">
+      <div class="eyebrow inline-flex mb-5">For whom</div>
+      <h2 class="section-title mb-5">こんな方に<span style="color:var(--accent)">おすすめ</span>です。</h2>
+      <p class="leading-relaxed" style="color:var(--fg-dim);">
+        実店舗・サービス業をはじめ、来店や予約を「地図検索」から獲得したいすべての業種が対象です。
+        特に下記の業種では、当日中に改善ポイントが見える形で持ち帰っていただけます。
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-3 justify-center mb-20" id="industries" data-anim="up">
+      <!-- chips injected -->
+    </div>
+
+    <!-- おすすめしない方 -->
+    <div class="grid lg:grid-cols-2 gap-12 items-start pt-12" style="border-top:1px solid var(--line);">
+      <div data-anim="left">
+        <div class="eyebrow mb-5" style="color:var(--danger);">
+          <span style="display:inline-flex;align-items:center;gap:8px;">
+            <span style="display:inline-block;width:24px;height:2px;background:var(--danger);border-radius:1px;"></span>
+            Not for you if…
+          </span>
+        </div>
+        <h2 class="section-title mb-5">このような方には<br>おすすめしません。</h2>
+        <p style="color:var(--fg-dim);" class="leading-relaxed">
+          内容のミスマッチを避けるため、申込み前にご確認ください。
+        </p>
+      </div>
+      <div class="space-y-4" data-anim="right">
+        <div class="card card-hover p-6 flex items-start gap-4">
+          <div class="shrink-0 w-10 h-10 rounded-full grid place-items-center" style="background:rgba(234,67,53,.08);">
+            <i data-lucide="x" class="w-5 h-5" style="color:var(--danger)"></i>
+          </div>
+          <div>
+            <div class="font-semibold mb-1">実店舗・実拠点をお持ちでない事業者様</div>
+            <p class="text-sm leading-relaxed" style="color:var(--fg-dim);">Googleビジネスプロフィールの登録には実在する住所が必要なため、内容をご活用いただきにくい場合があります。</p>
+          </div>
+        </div>
+        <div class="card card-hover p-6 flex items-start gap-4">
+          <div class="shrink-0 w-10 h-10 rounded-full grid place-items-center" style="background:rgba(234,67,53,.08);">
+            <i data-lucide="x" class="w-5 h-5" style="color:var(--danger)"></i>
+          </div>
+          <div>
+            <div class="font-semibold mb-1">プロフィール管理を外注し今後も自社で触る予定がない方</div>
+            <p class="text-sm leading-relaxed" style="color:var(--fg-dim);">本会は実際に手を動かして自店のビジネスプロフィールを改善するワークショップです。</p>
+          </div>
+        </div>
+        <div class="card card-hover p-6 flex items-start gap-4">
+          <div class="shrink-0 w-10 h-10 rounded-full grid place-items-center" style="background:rgba(234,67,53,.08);">
+            <i data-lucide="x" class="w-5 h-5" style="color:var(--danger)"></i>
+          </div>
+          <div>
+            <div class="font-semibold mb-1">当日、スマートフォン・タブレット・PCをお持ちでない方</div>
+            <p class="text-sm leading-relaxed" style="color:var(--fg-dim);">セルフ診断パートでご自身のGoogleビジネスプロフィールに実際にアクセスしていただきます。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== REQUIREMENTS ====================== -->
+<section class="section-pad">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+    <div class="text-center max-w-2xl mx-auto mb-12">
+      <div class="eyebrow inline-flex mb-5" data-anim="up">Requirements</div>
+      <h2 class="section-title mb-5" data-anim="up">参加にあたっての条件</h2>
+      <p style="color:var(--fg-dim);" data-anim="up">少人数制で全員にしっかり向き合うため、下記をご確認の上ご参加ください。</p>
+    </div>
+    <div class="grid md:grid-cols-2 gap-5 max-w-3xl mx-auto" id="requirements"></div>
+  </div>
+</section>
+
+<!-- ====================== DETAILS ====================== -->
+<section class="section-pad" style="background:var(--bg-2);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+    <div class="mb-12">
+      <div class="eyebrow mb-5" data-anim="up">Event details</div>
+      <h2 class="section-title mb-2" data-anim="up">開催詳細</h2>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6">
+      <!-- date/time -->
+      <div class="card p-7" data-anim="up">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-10 h-10 rounded-full grid place-items-center" style="background:#EAF2FE;">
+            <i data-lucide="calendar" class="w-5 h-5" style="color:#4285F4;"></i>
+          </div>
+          <div class="font-mono text-[10px] tracking-widest" style="color:var(--fg-mute);">DATE / TIME</div>
+        </div>
+        <div class="font-display text-2xl font-semibold mb-2" id="detail-date">—</div>
+        <div class="mb-1" style="color:var(--fg-dim);" id="detail-time">—</div>
+        <div class="text-sm" style="color:var(--fg-mute);"><span id="detail-dur">—</span>　/　参加費 <span id="detail-fee">—</span></div>
+      </div>
+
+      <!-- venue -->
+      <div class="card p-7 lg:col-span-2" data-anim="up">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-10 h-10 rounded-full grid place-items-center" style="background:#E6F4EA;">
+            <i data-lucide="map-pin" class="w-5 h-5" style="color:#34A853;"></i>
+          </div>
+          <div class="font-mono text-[10px] tracking-widest" style="color:var(--fg-mute);">VENUE</div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div>
+            <div class="font-display text-xl font-semibold mb-2" id="venue-name">—</div>
+            <div class="text-sm leading-relaxed mb-4" style="color:var(--fg-dim);" id="venue-address">—</div>
+            <a id="map-link" target="_blank" rel="noopener" href="#" class="btn-ghost inline-flex items-center gap-2 px-4 py-2.5 text-xs" style="border-radius:24px;">
+              <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+              Googleマップで開く
+            </a>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <i data-lucide="parking-circle" class="w-4 h-4" style="color:var(--fg-dim);"></i>
+              <div class="font-mono text-[10px] tracking-widest" style="color:var(--fg-mute);">PARKING</div>
+            </div>
+            <p class="text-sm leading-relaxed" style="color:var(--fg-dim);" id="venue-parking">—</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Maps embed -->
+    <div class="mt-8" data-anim="up">
+      <div class="map-wrap" style="box-shadow:0 4px 20px rgba(0,0,0,.1);">
+        <iframe id="map-iframe" src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d894.865614533331!2d127.6954395!3d26.2141591!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x34e569cb16dea07d%3A0x1a20f9f3ebacd842!2z44OE44Oc44OQ44OrQ2FmZe-8hkJhcg!5e0!3m2!1sja!2sjp!4v1778600875620!5m2!1sja!2sjp"
+                allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+                title="ツボバル 地図"></iframe>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== TIMELINE ====================== -->
+<section id="schedule" class="section-pad">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+    <div class="mb-12 max-w-2xl">
+      <div class="eyebrow mb-5" data-anim="up">Timeline</div>
+      <h2 class="section-title mb-5" data-anim="up">当日の流れ</h2>
+      <p style="color:var(--fg-dim);" data-anim="up">講義→セルフ診断→個別質疑応答の順で進行します。</p>
+    </div>
+    <div class="relative max-w-2xl pl-14 md:pl-20" id="timeline-wrap">
+      <div class="tl-line" id="tl-line"></div>
+      <div id="timeline" class="space-y-12"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== INSTRUCTOR ====================== -->
+<section class="section-pad" style="background:var(--bg);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+    <div class="text-center mb-12">
+      <div class="eyebrow inline-flex mb-5" data-anim="up">Instructor</div>
+      <h2 class="section-title mb-3" data-anim="up">講師紹介</h2>
+    </div>
+
+    <div class="card card-hover p-8 md:p-12 max-w-3xl mx-auto" data-anim="up">
+      <div class="flex flex-col sm:flex-row items-center sm:items-start gap-8">
+        <!-- 写真 -->
+        <div class="flex-shrink-0">
+          <div style="width:140px;height:140px;border-radius:50%;overflow:hidden;border:4px solid #4285F4;box-shadow:0 4px 20px rgba(66,133,244,.25);">
+            <img src="_MG_9748-2.jpg" alt="国吉弘孝" style="width:100%;height:100%;object-fit:cover;object-position:center top;" />
+          </div>
+        </div>
+
+        <!-- テキスト -->
+        <div class="flex-1 text-center sm:text-left">
+          <div class="eyebrow mb-2" style="font-size:11px;">SearchMania Inc.</div>
+          <h3 class="font-display text-2xl md:text-3xl font-bold mb-1" style="color:var(--fg);">国吉 弘孝</h3>
+          <p class="text-sm font-medium mb-4" style="color:var(--accent);">Googleマップ集客専門家 / MEOコンサルタント</p>
+          <div class="space-y-2 text-sm leading-relaxed mb-6" style="color:var(--fg-dim);">
+            <p>沖縄県を拠点に、飲食・美容・クリニック・小売業など多業種の店舗に対し、Googleビジネスプロフィール（旧Googleマイビジネス）の最適化支援を行う。</p>
+            <p>MEO対策・口コミ活用・写真戦略など、検索結果で「選ばれる店舗」づくりのノウハウを、現場目線でわかりやすく提供することを得意とする。</p>
+          </div>
+
+          <!-- SNS・リンク -->
+          <div class="flex flex-wrap gap-3 justify-center sm:justify-start">
+            <a href="https://search-mania.net/" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition"
+               style="background:#EAF2FE; color:#4285F4; border:1px solid #C5D9FC;">
+              <i data-lucide="globe" class="w-4 h-4"></i>公式HP
+            </a>
+            <a href="https://www.instagram.com/kuniyoshi.search_mania/" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition"
+               style="background:#FDF2F8; color:#E1306C; border:1px solid #F5C6E0;">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+              Instagram
+            </a>
+            <a href="https://www.facebook.com/profile.php?id=61567535690415" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition"
+               style="background:#EEF2FB; color:#1877F2; border:1px solid #C0CEF5;">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+              Facebook
+            </a>
+            <a href="https://maps.app.goo.gl/6ySi5yjBg2mfuALZ8" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition"
+               style="background:#E6F4EA; color:#34A853; border:1px solid #B7DFC4;">
+              <i data-lucide="map-pin" class="w-4 h-4"></i>Google Map
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== APPLY FORM ====================== -->
+<section id="apply" class="section-pad" style="background:var(--bg-2);">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-10">
+    <div class="text-center mb-12">
+      <div class="eyebrow inline-flex mb-5" data-anim="up">Apply</div>
+      <h2 class="section-title mb-5" data-anim="up">参加申込み</h2>
+      <p style="color:var(--fg-dim);" data-anim="up">所要 約1分。お申込みいただいた情報は本セミナーの運営のみに使用します。</p>
+    </div>
+
+    <!-- Sold out overlay -->
+    <div id="form-soldout" class="hidden card p-10 text-center">
+      <div class="inline-flex stamp mb-6" style="opacity:1; position:static;">SOLD OUT</div>
+      <p class="text-lg mb-2 font-semibold">本会は満席となりました。</p>
+      <p class="text-sm mb-6" style="color:var(--fg-dim);">次回開催のご案内をご希望の方は、下記からご連絡ください。</p>
+    </div>
+
+    <form id="apply-form" class="card p-7 md:p-10 space-y-5" novalidate>
+
+      <div class="grid sm:grid-cols-2 gap-5">
+        <div>
+          <label class="flex items-center gap-1 text-sm font-medium mb-2">
+            <span>メールアドレス</span><span class="text-xs" style="color:var(--danger);">*</span>
+          </label>
+          <input type="email" name="email" class="field" placeholder="you@example.com" required autocomplete="email"/>
+          <div class="text-xs mt-1.5 hidden" style="color:var(--danger);" data-err></div>
+        </div>
+        <div>
+          <label class="flex items-center gap-1 text-sm font-medium mb-2">
+            <span>氏名（フルネーム）</span><span class="text-xs" style="color:var(--danger);">*</span>
+          </label>
+          <input type="text" name="name" class="field" placeholder="例：山田 太郎" required autocomplete="name"/>
+          <div class="text-xs mt-1.5 hidden" style="color:var(--danger);" data-err></div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-5">
+        <div>
+          <label class="flex items-center gap-1 text-sm font-medium mb-2">
+            <span>電話番号</span><span class="text-xs" style="color:var(--danger);">*</span>
+          </label>
+          <input type="tel" name="phone" class="field" placeholder="例：080-1234-5678" required autocomplete="tel"/>
+          <div class="text-xs mt-1.5 hidden" style="color:var(--danger);" data-err></div>
+        </div>
+        <div>
+          <label class="flex items-center gap-1 text-sm font-medium mb-2">
+            <span>店舗名・屋号</span><span class="text-xs" style="color:var(--danger);">*</span>
+          </label>
+          <input type="text" name="shopName" class="field" placeholder="例：Café＆Bar ツボバル" required/>
+          <div class="text-xs mt-1.5 hidden" style="color:var(--danger);" data-err></div>
+        </div>
+      </div>
+
+      <div>
+        <label class="flex items-center gap-2 text-sm font-medium mb-3">
+          <span>知ったきっかけ</span>
+          <span class="text-xs font-normal" style="color:var(--fg-mute);">任意・複数選択可</span>
+        </label>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5" id="sources-grid"></div>
+      </div>
+
+      <div>
+        <label class="flex items-center gap-2 text-sm font-medium mb-2">
+          <span>ご質問・特記事項</span>
+          <span class="text-xs font-normal" style="color:var(--fg-mute);">任意</span>
+        </label>
+        <textarea name="note" class="field min-h-[100px] resize-y" placeholder="気になる点があればお書きください"></textarea>
+      </div>
+
+      <div class="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <p class="text-xs leading-relaxed sm:max-w-xs" style="color:var(--fg-mute);">
+          送信内容は本セミナー運営のみに使用します。第三者への提供は行いません。
+        </p>
+        <button type="submit" id="submit-btn"
+                class="btn-primary inline-flex items-center justify-center gap-2 px-8 py-4 text-sm shrink-0">
+          <span id="submit-label">申込みを送信</span>
+          <i data-lucide="arrow-right" class="w-4 h-4" id="submit-icon"></i>
+          <svg id="submit-spinner" class="hidden w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="40 60" />
+          </svg>
+        </button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ====================== FOOTER ====================== -->
+<footer style="background:#202124; color:#9AA0A6;" class="py-14 mt-0">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+
+    <!-- Top row: logo + company link -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 pb-8" style="border-bottom:1px solid rgba(255,255,255,.1);">
+      <div class="flex items-center">
+        <a href="https://search-mania.net/" target="_blank" rel="noopener">
+          <span style="background:linear-gradient(135deg,#4285F4,#34A853); border-radius:14px; padding:8px 20px; display:inline-flex; align-items:center; justify-content:center;">
+            <span style="color:#fff; font-family:'Inter','Noto Sans JP',sans-serif; font-weight:700; font-size:16px; letter-spacing:-0.02em; white-space:nowrap;">SearchMania Inc.</span>
+          </span>
+        </a>
+      </div>
+      <a href="https://search-mania.net/" target="_blank" rel="noopener"
+         class="inline-flex items-center gap-2 text-sm transition hover:text-white" style="color:#9AA0A6;">
+        <i data-lucide="globe" class="w-4 h-4"></i>
+        <span>Search Mania（運営会社）</span>
+        <i data-lucide="external-link" class="w-3 h-3 opacity-60"></i>
+      </a>
+    </div>
+
+    <!-- Guidelines section -->
+    <div class="grid md:grid-cols-3 gap-8 mb-10 pb-8" style="border-bottom:1px solid rgba(255,255,255,.08);">
+      <div>
+        <h4 class="text-sm font-semibold mb-3" style="color:#E8EAED;">個人情報の取り扱いについて</h4>
+        <p class="text-xs leading-relaxed" style="color:#9AA0A6;">
+          お申込みフォームにご入力いただいた個人情報（氏名・メールアドレス・電話番号・店舗名等）は、
+          本セミナーの参加受付・開催連絡・リマインド配信の目的のみに使用します。
+          第三者への提供・開示は行いません。セミナー終了後は速やかに削除いたします。
+        </p>
+      </div>
+      <div>
+        <h4 class="text-sm font-semibold mb-3" style="color:#E8EAED;">免責事項</h4>
+        <p class="text-xs leading-relaxed" style="color:#9AA0A6;">
+          本セミナーで提供する情報はMEO改善の一般的な手法に基づくものです。
+          個別の店舗における効果を保証するものではありません。
+          Google社のアルゴリズムやポリシー変更により、情報が変わる場合があります。
+        </p>
+      </div>
+      <div>
+        <h4 class="text-sm font-semibold mb-3" style="color:#E8EAED;">キャンセル・変更について</h4>
+        <p class="text-xs leading-relaxed" style="color:#9AA0A6;">
+          参加をキャンセルされる場合は、開催日前日までにご連絡ください。
+          天候・天災・主催者都合による中止の場合は事前にメールにてお知らせします。
+          やむを得ない事情による中止の場合、参加費の返金は発生しません（無料のため）。
+        </p>
+      </div>
+    </div>
+
+    <!-- Bottom: copyright + meta -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div id="footer-meta" class="text-xs" style="color:#5F6368;"></div>
+      <div class="flex items-center gap-2">
+        <div class="g-dot" style="background:#4285F4; width:8px; height:8px;"></div>
+        <div class="g-dot" style="background:#EA4335; width:8px; height:8px;"></div>
+        <div class="g-dot" style="background:#FBBC05; width:8px; height:8px;"></div>
+        <div class="g-dot" style="background:#34A853; width:8px; height:8px;"></div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ====================== THANK YOU MODAL ====================== -->
+<div class="modal-backdrop" id="thanks-modal">
+  <div class="card relative overflow-hidden max-w-sm w-full mx-4 p-10 text-center" style="transform:scale(.95);" id="thanks-inner">
+    <div class="relative">
+      <div class="mx-auto mb-6 w-16 h-16 rounded-full grid place-items-center" style="background:rgba(52,168,83,.1); border:1px solid rgba(52,168,83,.4);">
+        <svg viewBox="0 0 52 52" class="w-9 h-9">
+          <circle cx="26" cy="26" r="24" fill="none" stroke="#34A853" stroke-width="2" id="check-circle"
+                  style="stroke-dasharray:160;stroke-dashoffset:160;transition:stroke-dashoffset .6s ease;"/>
+          <path d="M14 27 L23 35 L39 18" fill="none" stroke="#34A853" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" id="check-mark"
+                style="stroke-dasharray:50;stroke-dashoffset:50;transition:stroke-dashoffset .5s .5s ease;"/>
+        </svg>
+      </div>
+      <h3 class="font-display text-2xl font-bold mb-2">申込みありがとうございました</h3>
+      <p class="text-sm leading-relaxed mb-6" style="color:var(--fg-dim);">
+        受付完了のご連絡を、ご登録のメールアドレス宛にお送りします。<br>当日のご参加を心よりお待ちしております。
+      </p>
+      <button id="thanks-close" class="btn-ghost w-full px-6 py-3 text-sm">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== SCRIPTS ====================== -->
+<script>
+(function(){
+  const cfg = window.EVENT_CONFIG;
+  const $ = (sel, el=document) => el.querySelector(sel);
+  const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+  const prefersReduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- inject EVENT_CONFIG ---------- */
+  document.title = `${cfg.title} ｜ 申込み`;
+  $("#catch-copy").textContent = cfg.catchCopy;
+  $("#fact-date").textContent = cfg.date;
+  $("#fact-time").textContent = cfg.time;
+  $("#fact-fee").textContent  = cfg.fee;
+  $("#fact-dur").textContent  = cfg.duration;
+  $("#cap-num").textContent   = cfg.capacity;
+
+  $("#detail-date").textContent = cfg.date;
+  $("#detail-time").textContent = cfg.time;
+  $("#detail-dur").textContent  = cfg.duration;
+  $("#detail-fee").textContent  = cfg.fee;
+  $("#venue-name").textContent  = cfg.venue.name;
+  $("#venue-address").textContent = cfg.venue.address;
+  $("#venue-parking").textContent = cfg.venue.parking;
+  $("#map-link").href = cfg.venue.mapUrl;
+
+  // GASの「設定」シートから開催情報を取得してDOMを更新
+  (async function fetchRemoteConfig() {
+    if (!cfg.gasUrl || cfg.gasUrl.includes("XXXXX")) {
+      fetchRemainingSeats(); // GAS未設定時はフォールバック値で取得
+      return;
+    }
+    try {
+      const res  = await fetch(`${cfg.gasUrl}?action=config&eventId=${encodeURIComponent(cfg.eventId)}&t=${Date.now()}`, { cache: "no-store" });
+      const data = await res.json();
+      if (!data.ok || !data.config) return;
+      const c = data.config;
+
+      // EVENT_CONFIGを上書き（フォーム送信にも反映）
+      if (c["eventId"])    cfg.eventId        = c["eventId"];
+      if (c["定員"])       cfg.capacity       = Number(c["定員"]) || cfg.capacity;
+      if (c["開催日"])     cfg.date           = c["開催日"];
+      if (c["開催時間"])   cfg.time           = c["開催時間"];
+      if (c["所要時間"])   cfg.duration       = c["所要時間"];
+      if (c["参加費"])     cfg.fee            = c["参加費"];
+      if (c["会場名"])     cfg.venue.name     = c["会場名"];
+      if (c["会場住所"])   cfg.venue.address  = c["会場住所"];
+      if (c["駐車場"])     cfg.venue.parking  = c["駐車場"];
+      if (c["地図リンク"]) cfg.venue.mapUrl   = c["地図リンク"];
+      if (c["キャッチコピー"]) cfg.catchCopy  = c["キャッチコピー"];
+
+      // DOM更新
+      if (c["開催日"]) {
+        $("#fact-date").textContent    = c["開催日"];
+        $("#detail-date").textContent  = c["開催日"];
+      }
+      if (c["開催時間"]) {
+        $("#fact-time").textContent    = c["開催時間"];
+        $("#detail-time").textContent  = c["開催時間"];
+      }
+      if (c["所要時間"]) {
+        $("#fact-dur").textContent    = c["所要時間"];
+        $("#detail-dur").textContent  = c["所要時間"];
+      }
+      if (c["参加費"])       $("#fact-fee").textContent      = c["参加費"];
+      if (c["定員"])         $("#cap-num").textContent       = c["定員"];
+      if (c["会場名"])       $("#venue-name").textContent    = c["会場名"];
+      if (c["会場住所"])     $("#venue-address").textContent = c["会場住所"];
+      if (c["駐車場"])       $("#venue-parking").textContent = c["駐車場"];
+      if (c["地図リンク"])   $("#map-link").href             = c["地図リンク"];
+      if (c["キャッチコピー"]) $("#catch-copy").textContent  = c["キャッチコピー"];
+
+      // 地図iframeのsrcを更新
+      if (c["地図埋込URL"]) {
+        const iframe = document.getElementById("map-iframe");
+        if (iframe) iframe.src = c["地図埋込URL"];
+      }
+
+      // eventIdが更新された後に残席を再取得（競合防止）
+      fetchRemainingSeats();
+    } catch (_) {
+      // 取得失敗時はEVENT_CONFIGのフォールバック値で残席取得
+      fetchRemainingSeats();
+    }
+  })();
+
+  // Industries chips
+  const industryIcons = {
+    "飲食店":"utensils","美容室":"scissors","エステ":"sparkles","小売店":"shopping-bag",
+    "ホテル":"bed-double","整骨院":"bone","鍼灸院":"flower","歯医者":"smile","クリニック":"stethoscope"
+  };
+  const indEl = $("#industries");
+  cfg.targetIndustries.forEach(name => {
+    const div = document.createElement("div");
+    div.className = "chip";
+    div.innerHTML = `<i data-lucide="${industryIcons[name]||'circle-dot'}" class="w-3.5 h-3.5"></i><span>${name}</span>`;
+    indEl.appendChild(div);
+  });
+
+  // Requirements
+  const reqEl = $("#requirements");
+  cfg.requirements.forEach((t, i) => {
+    const card = document.createElement("div");
+    card.className = "card card-hover p-6 flex items-start gap-4";
+    card.dataset.anim = "up";
+    card.innerHTML = `
+      <div class="shrink-0 w-10 h-10 rounded-full grid place-items-center" style="background:#E6F4EA;">
+        <i data-lucide="check" class="w-5 h-5" style="color:#34A853;"></i>
+      </div>
+      <div>
+        <div class="font-mono text-[10px] tracking-widest mb-1" style="color:var(--fg-mute);">REQUIREMENT ${String(i+1).padStart(2,"0")}</div>
+        <div class="text-sm leading-relaxed font-medium">${t}</div>
+      </div>`;
+    reqEl.appendChild(card);
+  });
+
+  // Timeline
+  const tlEl = $("#timeline");
+  const tlColors = ["#4285F4","#EA4335","#FBBC05","#34A853"];
+  cfg.schedule.forEach((s, i) => {
+    const item = document.createElement("div");
+    item.className = "relative tl-item";
+    item.dataset.anim = "up";
+    item.innerHTML = `
+      <div class="absolute -left-14 md:-left-20 top-1">
+        <div class="w-10 h-10 rounded-full grid place-items-center font-mono text-xs font-bold" style="background:${tlColors[i%4]}; color:#fff;">
+          ${String(i+1).padStart(2,"0")}
+        </div>
+      </div>
+      <div class="font-mono text-xs tracking-widest mb-1.5" style="color:${tlColors[i%4]};">${s.time}</div>
+      <div class="font-display text-xl md:text-2xl font-semibold mb-1.5">${s.title}</div>
+      <div class="text-sm leading-relaxed" style="color:var(--fg-dim);">${s.desc||""}</div>`;
+    tlEl.appendChild(item);
+  });
+
+  // Sources checkboxes
+  const sources = ["ウェブサイト","SNS","知人紹介","メルマガ","ポスター・チラシ","その他"];
+  const srcEl = $("#sources-grid");
+  sources.forEach(label => {
+    const wrap = document.createElement("label");
+    wrap.className = "cbx card p-3.5 flex items-center gap-3 cursor-pointer";
+    wrap.innerHTML = `
+      <input type="checkbox" name="source" value="${label}">
+      <span class="box"><i data-lucide="check" class="w-3 h-3 check"></i></span>
+      <span class="text-sm">${label}</span>`;
+    srcEl.appendChild(wrap);
+  });
+
+  // Footer
+  const yr = new Date().getFullYear();
+  $("#footer-meta").textContent = `© ${yr} ${cfg.title} — 主催：国吉弘孝 / Search Mania`;
+
+  window.lucide && lucide.createIcons();
+
+  /* ---------- Lenis ---------- */
+  if (!prefersReduce && window.Lenis) {
+    const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+    function raf(t){ lenis.raf(t); requestAnimationFrame(raf); }
+    requestAnimationFrame(raf);
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener("click", e => {
+        const id = a.getAttribute("href");
+        if (id.length > 1 && document.querySelector(id)) {
+          e.preventDefault(); lenis.scrollTo(id, { offset: -56 });
+        }
+      });
+    });
+    window.__lenis = lenis;
+  }
+
+  /* ---------- GSAP ---------- */
+  if (window.gsap && window.ScrollTrigger) {
+    gsap.registerPlugin(ScrollTrigger);
+
+    if (!prefersReduce) {
+      gsap.set(".reveal-inner", { yPercent: 120 });
+      gsap.to(".reveal-inner", { yPercent: 0, duration: 1.5, ease: "back.out(1.6)", stagger: 0.2, delay: 0.1 });
+
+      gsap.from('.g-dots', { y: 20, opacity: 0, duration: 0.8, ease: "expo.out", delay: 0.05 });
+      gsap.from('#top [data-anim="up"]', { y: 50, opacity: 0, scale: 0.97, duration: 1.1, ease: "back.out(1.3)", stagger: 0.1, delay: 0.7 });
+      gsap.from('#top [data-anim="right"]', { x: 80, opacity: 0, scale: 0.94, duration: 1.4, ease: "elastic.out(1, 0.55)", delay: 0.5 });
+    }
+
+    $$('[data-anim]').forEach((el, i) => {
+      if (el.closest("#top")) return;
+      const dir = el.dataset.anim;
+      const from = { opacity: 0, duration: 1.0, ease: "back.out(1.2)", delay: (i % 4) * 0.04 };
+      if (dir === "up") { from.y = 55; from.scale = 0.97; }
+      else if (dir === "left") { from.x = -60; }
+      else if (dir === "right") { from.x = 60; from.scale = 0.97; }
+      gsap.from(el, { ...from, scrollTrigger: { trigger: el, start: "top 92%", once: true } });
+    });
+
+    // Timeline line
+    const tlLine = $("#tl-line");
+    if (tlLine) {
+      gsap.fromTo(tlLine, { scaleY: 0 }, {
+        scaleY: 1, ease: "none",
+        scrollTrigger: { trigger: "#timeline-wrap", start: "top 70%", end: "bottom 70%", scrub: 0.6 }
+      });
+    }
+  }
+
+  /* ---------- Particles ---------- */
+  (function particles(){
+    const c = $("#particles"); if (!c || prefersReduce) return;
+    const ctx = c.getContext("2d");
+    let w, h, dpr = Math.min(window.devicePixelRatio||1, 2), pts = [];
+    const COLORS = ["66,133,244","234,67,53","251,188,5","52,168,83"];
+    function resize(){
+      w = c.clientWidth; h = c.clientHeight;
+      c.width = w*dpr; c.height = h*dpr; ctx.scale(dpr,dpr);
+      const count = Math.min(100, Math.floor(w*h/14000));
+      pts = Array.from({length:count}, (_, i) => ({
+        x: Math.random()*w, y: Math.random()*h,
+        vx: (Math.random()-.5)*0.3, vy: (Math.random()-.5)*0.3,
+        r: Math.random()*2+0.5,
+        color: COLORS[i%4],
+        pulse: Math.random()*Math.PI*2
+      }));
+    }
+    resize(); window.addEventListener("resize", resize);
+    function tick(){
+      ctx.clearRect(0,0,w,h);
+      for (const p of pts){ p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>w)p.vx*=-1; if(p.y<0||p.y>h)p.vy*=-1; }
+      for (let i=0;i<pts.length;i++){
+        for (let j=i+1;j<pts.length;j++){
+          const a=pts[i],b=pts[j],dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy;
+          if(d2<140*140){
+            const alpha=1-d2/(140*140);
+            ctx.strokeStyle=`rgba(${a.color},${alpha*0.45})`;
+            ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+          }
+        }
+      }
+      for (const p of pts){
+        p.pulse+=0.025;
+        const pr=p.r*(0.9+Math.sin(p.pulse)*0.2);
+        ctx.fillStyle=`rgba(${p.color},${0.3+Math.sin(p.pulse)*0.15})`;
+        ctx.beginPath(); ctx.arc(p.x,p.y,pr,0,Math.PI*2); ctx.fill();
+      }
+      requestAnimationFrame(tick);
+    }
+    tick();
+  })();
+
+  /* ---------- Magnetic ---------- */
+  if (!prefersReduce) {
+    $$(".magnet").forEach(el => {
+      const inner = el.firstElementChild;
+      el.addEventListener("mousemove", e => {
+        const r=el.getBoundingClientRect(), x=e.clientX-r.left-r.width/2, y=e.clientY-r.top-r.height/2;
+        inner.style.transition="transform 0.1s ease";
+        inner.style.transform=`translate(${x*0.4}px,${y*0.5}px) scale(1.06)`;
+      });
+      el.addEventListener("mouseleave", () => {
+        inner.style.transition="transform 0.4s cubic-bezier(.2,.8,.2,1)"; inner.style.transform="";
+      });
+    });
+  }
+
+  /* ---------- Card tilt ---------- */
+  if (!prefersReduce && window.matchMedia("(hover:hover)").matches) {
+    document.querySelectorAll(".card-hover").forEach(card => {
+      card.addEventListener("mousemove", e => {
+        const r=card.getBoundingClientRect(), px=(e.clientX-r.left)/r.width-.5, py=(e.clientY-r.top)/r.height-.5;
+        card.style.transform=`perspective(700px) rotateX(${-py*8}deg) rotateY(${px*10}deg) translateY(-4px) scale(1.01)`;
+        card.style.boxShadow=`${px*18}px ${py*18}px 48px rgba(0,0,0,.1)`;
+      });
+      card.addEventListener("mouseleave", () => { card.style.transform=""; card.style.boxShadow=""; });
+    });
+  }
+
+  /* ---------- Nav scroll ---------- */
+  const nav = $("#topnav");
+  function onScroll(){
+    const y = window.scrollY||0;
+    nav.style.background = y>24 ? "rgba(255,255,255,0.92)" : "transparent";
+    nav.style.backdropFilter = y>24 ? "blur(14px)" : "none";
+    nav.style.boxShadow = y>24 ? "0 1px 0 rgba(0,0,0,.1)" : "none";
+  }
+  window.addEventListener("scroll", onScroll, {passive:true}); onScroll();
+
+  /* ---------- SEATS ---------- */
+  const seatsNumEl=$("#seats-num"), seatsBarEl=$("#seats-bar"), filledLabelEl=$("#filled-label"), seatsCta=$("#seats-cta");
+
+  function setSeatsDisplayLoading(){
+    seatsNumEl.textContent="—"; seatsNumEl.classList.add("skeleton");
+    seatsBarEl.style.width="0%"; filledLabelEl.textContent="残席を取得中…";
+  }
+  function animateSeatsCountdown(remaining){
+    seatsNumEl.classList.remove("skeleton");
+    const filled=cfg.capacity-remaining;
+    if(prefersReduce){ seatsNumEl.textContent=remaining; }
+    else if(window.gsap){
+      const obj={n:cfg.capacity};
+      gsap.to(obj,{n:remaining, duration:1.4, ease:"expo.out", onUpdate:()=>{ seatsNumEl.textContent=Math.round(obj.n); }});
+    } else { seatsNumEl.textContent=remaining; }
+    setTimeout(()=>{
+      seatsBarEl.style.width=Math.min(100,Math.round(filled/cfg.capacity*100))+"%";
+      filledLabelEl.textContent=`${filled} 名が申込済`;
+    },200);
+  }
+  function showSeatsFallbackNotice(){ $("#seats-fallback-note").classList.remove("hidden"); }
+  function showSoldOutState(){
+    $("#soldout-state").classList.remove("hidden");
+    $("#seats-cta").classList.add("hidden");
+    $("#form-soldout").classList.remove("hidden");
+    $("#apply-form").classList.add("hidden");
+    const stamp=$("#soldout-stamp");
+    if(!prefersReduce&&window.gsap){
+      gsap.fromTo(stamp,{scale:2.4,opacity:0,rotation:-28},{scale:1,opacity:1,rotation:-8,duration:.6,ease:"back.out(2)"});
+    } else { stamp.style.opacity=1; }
+  }
+
+  async function fetchRemainingSeats(){
+    setSeatsDisplayLoading();
+    try{
+      if(!cfg.gasUrl||cfg.gasUrl.includes("XXXXX")) throw new Error("gasUrl_not_set");
+      const res=await fetch(`${cfg.gasUrl}?action=count&eventId=${encodeURIComponent(cfg.eventId)}&t=${Date.now()}`,{method:"GET",cache:"no-store"});
+      const data=await res.json();
+      if(data.ok){
+        const remaining=Math.max(0,cfg.capacity-(data.count||0));
+        animateSeatsCountdown(remaining);
+        if(remaining===0) showSoldOutState();
+        return remaining;
+      }
+      throw new Error(data.error||"unknown");
+    }catch(e){
+      animateSeatsCountdown(cfg.capacity); showSeatsFallbackNotice(); return cfg.capacity;
+    }
+  }
+  // fetchRemainingSeats は fetchRemoteConfig 完了後に呼ぶため、ここでは呼ばない
+
+  /* ---------- FORM ---------- */
+  const form=$("#apply-form"), submitBtn=$("#submit-btn"), submitLabel=$("#submit-label"), submitIcon=$("#submit-icon"), submitSpinner=$("#submit-spinner");
+
+  function clearErrors(){ form.querySelectorAll("[data-err]").forEach(e=>{e.textContent="";e.classList.add("hidden");}); form.querySelectorAll(".field").forEach(f=>f.classList.remove("field-error")); }
+  function setError(input,msg){
+    input.classList.add("field-error");
+    const err=input.parentElement.querySelector("[data-err]");
+    if(err){err.textContent=msg;err.classList.remove("hidden");}
+  }
+  function validate(){
+    clearErrors(); let ok=true;
+    const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailRe.test(form.email.value.trim())){ setError(form.email,"有効なメールアドレスを入力してください"); ok=false; }
+    if(!form.name.value.trim()){ setError(form.name,"氏名を入力してください"); ok=false; }
+    if(!form.phone.value.trim()||form.phone.value.replace(/\D/g,"").length<9){ setError(form.phone,"電話番号を正しく入力してください"); ok=false; }
+    if(!form.shopName.value.trim()){ setError(form.shopName,"店舗名・屋号を入力してください"); ok=false; }
+    return ok;
+  }
+  function setSubmitting(state){
+    submitBtn.disabled=state;
+    if(state){ submitLabel.textContent="送信中…"; submitIcon.classList.add("hidden"); submitSpinner.classList.remove("hidden"); }
+    else { submitLabel.textContent="申込みを送信"; submitIcon.classList.remove("hidden"); submitSpinner.classList.add("hidden"); }
+  }
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    if(!validate()){
+      const first=form.querySelector(".field-error");
+      if(first&&window.gsap) gsap.fromTo(first,{x:-6},{x:0,duration:.4,ease:"elastic.out(1,.4)"});
+      return;
+    }
+    setSubmitting(true);
+    const sources=$$('input[name="source"]:checked').map(i=>i.value);
+    const payload={
+      action:"submit", eventId:cfg.eventId, submittedAt:new Date().toISOString(),
+      name:form.name.value.trim(), email:form.email.value.trim(),
+      phone:form.phone.value.trim(), shopName:form.shopName.value.trim(),
+      source:sources, note:form.note.value.trim()
+    };
+    try{
+      if(cfg.gasUrl&&!cfg.gasUrl.includes("XXXXX")){
+        await fetch(cfg.gasUrl,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
+      }
+      await onSubmitSuccess();
+    }catch(err){ await onSubmitSuccess(); }
+    finally{ setSubmitting(false); form.reset(); }
+  });
+
+  async function onSubmitSuccess(){ await fetchRemainingSeats(); showThankYouModal(); }
+
+  /* ---------- Modal ---------- */
+  const modal=$("#thanks-modal"), inner=$("#thanks-inner");
+  function showThankYouModal(){
+    modal.classList.add("open");
+    if(window.gsap&&!prefersReduce){ gsap.fromTo(inner,{scale:.92,y:18,opacity:0},{scale:1,y:0,opacity:1,duration:.5,ease:"expo.out"}); }
+    else { inner.style.opacity=1; inner.style.transform="scale(1)"; }
+    requestAnimationFrame(()=>{ $("#check-circle").style.strokeDashoffset=0; $("#check-mark").style.strokeDashoffset=0; });
+  }
+  function hideModal(){
+    modal.classList.remove("open");
+    $("#check-circle").style.strokeDashoffset=160; $("#check-mark").style.strokeDashoffset=50;
+  }
+  $("#thanks-close").addEventListener("click", hideModal);
+  modal.addEventListener("click", e=>{ if(e.target===modal) hideModal(); });
+  window.addEventListener("keydown", e=>{ if(e.key==="Escape") hideModal(); });
+
+  window.lucide && lucide.createIcons();
+})();
+</script>
+</body>
+</html>
