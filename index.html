@@ -26,26 +26,18 @@
 -->
 
 <script>
+// 開催ごとに変わる値（日付・時間・会場・eventId・タイトル等）は
+// すべてスプレッドシートの「設定」シートから取得します。
+// このファイルに固定の開催情報は持たせません（古い値の誤表示を防ぐため）。
 window.EVENT_CONFIG = {
   gasUrl: "https://script.google.com/macros/s/AKfycbz0N95BpSCnSUxojul3Pq1VfYrOrmF3z4VRMWGbN4kC4dmr3GfPwPmhX1jOBDvfFVEp/exec",
 
-  eventId: "2026-05-22",
-  title: "Googleマップ診断会＋勉強会",
-  subtitle: "先着10名様",
+  // 取得前の安全な初期値（フォールバックではない）
+  eventId: "",
+  title: "セミナー申込み",
   capacity: 10,
-  catchCopy: "Googleマップ「お店の設定」を見直すだけで、来客数アップへの具体的改善策を無料診断します。",
 
-  date: "2026年4月17日（金）",
-  time: "14:00 〜 15:30",
-  duration: "90分",
-  fee: "無料",
-  venue: {
-    name: "Café＆Bar ツボバル",
-    address: "（住所）",
-    mapUrl: "https://maps.app.goo.gl/rYUED1nsaJ7CEat17",
-    parking: "先着4台店舗前 / 近隣コインパーキングあり（有料）"
-  },
-
+  // ページ固有のコンテンツ（スプレッドシートでは管理しない）
   schedule: [
     { time: "14:00", title: "Googleマップ基礎講座", desc: "ローカル検索の仕組みと、見られる店舗情報の整え方" },
     { time: "14:30", title: "セルフ診断・質疑応答", desc: "ご自身のビジネスプロフィールを開き、その場で改善ポイントを洗い出し" },
@@ -319,6 +311,37 @@ window.EVENT_CONFIG = {
 </head>
 
 <body class="overflow-x-hidden">
+
+<!-- ====================== LOADING OVERLAY ====================== -->
+<div id="page-loader" aria-hidden="true"
+     style="position:fixed; inset:0; z-index:9999; background:#ffffff;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            transition:opacity .5s ease, visibility .5s ease;">
+  <!-- SearchManiaブランドアクセントバー -->
+  <div style="position:absolute; top:0; left:0; right:0; height:4px;
+              background:linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853);"></div>
+
+  <!-- Logo pill -->
+  <div style="background:linear-gradient(135deg,#4285F4,#34A853); border-radius:14px;
+              padding:10px 26px; margin-bottom:28px;">
+    <span style="color:#fff; font-family:'Inter','Noto Sans JP',sans-serif;
+                 font-weight:700; font-size:18px; letter-spacing:-0.02em;">SearchMania Inc.</span>
+  </div>
+
+  <!-- Spinner -->
+  <svg width="44" height="44" viewBox="0 0 44 44" style="margin-bottom:18px;">
+    <circle cx="22" cy="22" r="18" fill="none" stroke="#E8EAED" stroke-width="3.5"/>
+    <circle cx="22" cy="22" r="18" fill="none" stroke="#4285F4" stroke-width="3.5"
+            stroke-linecap="round" stroke-dasharray="28 85" transform="rotate(-90 22 22)">
+      <animateTransform attributeName="transform" type="rotate"
+                        from="0 22 22" to="360 22 22" dur="0.9s" repeatCount="indefinite"/>
+    </circle>
+  </svg>
+
+  <!-- Text -->
+  <div style="font-family:'Noto Sans JP',sans-serif; font-size:13px;
+              color:#5F6368; letter-spacing:0.08em;">開催情報を読み込んでいます…</div>
+</div>
 
 <!-- Google-color top accent bar -->
 <div class="g-topbar w-full fixed top-0 left-0 z-[60]"></div>
@@ -901,53 +924,65 @@ window.EVENT_CONFIG = {
   const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
   const prefersReduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* ---------- inject EVENT_CONFIG ---------- */
-  document.title = `${cfg.title} ｜ 申込み`;
-  $("#catch-copy").textContent = cfg.catchCopy;
-  $("#fact-date").textContent = cfg.date;
-  $("#fact-time").textContent = cfg.time;
-  $("#fact-fee").textContent  = cfg.fee;
-  $("#fact-dur").textContent  = cfg.duration;
-  $("#cap-num").textContent   = cfg.capacity;
+  // ローディングオーバーレイを非表示にする（複数回呼ばれてもOK）
+  let loaderHidden = false;
+  function hidePageLoader() {
+    if (loaderHidden) return;
+    loaderHidden = true;
+    const el = document.getElementById("page-loader");
+    if (!el) return;
+    el.style.opacity = "0";
+    el.style.visibility = "hidden";
+    setTimeout(() => el.remove(), 600);
+  }
+  // フェイルセーフ：GAS応答が無くても5秒で必ず非表示にする
+  const loaderFailsafe = setTimeout(hidePageLoader, 5000);
 
-  $("#detail-date").textContent = cfg.date;
-  $("#detail-time").textContent = cfg.time;
-  $("#detail-dur").textContent  = cfg.duration;
-  $("#detail-fee").textContent  = cfg.fee;
-  $("#venue-name").textContent  = cfg.venue.name;
-  $("#venue-address").textContent = cfg.venue.address;
-  $("#venue-parking").textContent = cfg.venue.parking;
-  $("#map-link").href = cfg.venue.mapUrl;
+  // 日付を「2026年7月23日（木）」形式に整形。整形済み・空文字・パース不能はそのまま返す
+  function formatToJaDate(input) {
+    if (!input) return "";
+    const s = input.toString().trim();
+    if (!s) return "";
+    if (/^\d{4}年\d{1,2}月\d{1,2}日/.test(s)) return s; // 既に和暦形式
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return s; // パース不能ならそのまま
+    const days = ["日","月","火","水","木","金","土"];
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`;
+  }
+
+  /* ---------- inject EVENT_CONFIG ----------
+   * 開催情報（日付・時間・会場・タイトル・キャッチ等）は EVENT_CONFIG に持たない。
+   * すべてGASの「設定」シートから取得して反映する。
+   * 取得前は HTML の初期値「—」が表示される（古い値が混入しないことを保証）。
+   */
+  document.title = `${cfg.title} ｜ 申込み`;
+  $("#cap-num").textContent = cfg.capacity;
 
   // GASの「設定」シートから開催情報を取得してDOMを更新
   (async function fetchRemoteConfig() {
     if (!cfg.gasUrl || cfg.gasUrl.includes("XXXXX")) {
-      fetchRemainingSeats(); // GAS未設定時はフォールバック値で取得
+      clearTimeout(loaderFailsafe);
+      hidePageLoader();
+      fetchRemainingSeats();
       return;
     }
     try {
       const res  = await fetch(`${cfg.gasUrl}?action=config&eventId=${encodeURIComponent(cfg.eventId)}&t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
-      if (!data.ok || !data.config) return;
+      if (!data.ok || !data.config) { clearTimeout(loaderFailsafe); hidePageLoader(); return; }
       const c = data.config;
+      clearTimeout(loaderFailsafe);
 
-      // EVENT_CONFIGを上書き（フォーム送信にも反映）
-      if (c["eventId"])    cfg.eventId        = c["eventId"];
-      if (c["定員"])       cfg.capacity       = Number(c["定員"]) || cfg.capacity;
-      if (c["開催日"])     cfg.date           = c["開催日"];
-      if (c["開催時間"])   cfg.time           = c["開催時間"];
-      if (c["所要時間"])   cfg.duration       = c["所要時間"];
-      if (c["参加費"])     cfg.fee            = c["参加費"];
-      if (c["会場名"])     cfg.venue.name     = c["会場名"];
-      if (c["会場住所"])   cfg.venue.address  = c["会場住所"];
-      if (c["駐車場"])     cfg.venue.parking  = c["駐車場"];
-      if (c["地図リンク"]) cfg.venue.mapUrl   = c["地図リンク"];
-      if (c["キャッチコピー"]) cfg.catchCopy  = c["キャッチコピー"];
+      // 後続処理（fetch等）で必要な値のみ cfg へ保存
+      if (c["eventId"]) cfg.eventId  = c["eventId"];
+      if (c["定員"])   cfg.capacity = Number(c["定員"]) || cfg.capacity;
+      if (c["タイトル"]) document.title = `${c["タイトル"]} ｜ 申込み`;
 
       // DOM更新
       if (c["開催日"]) {
-        $("#fact-date").textContent    = c["開催日"];
-        $("#detail-date").textContent  = c["開催日"];
+        const dateStr = formatToJaDate(c["開催日"]);
+        $("#fact-date").textContent    = dateStr;
+        $("#detail-date").textContent  = dateStr;
       }
       if (c["開催時間"]) {
         $("#fact-time").textContent    = c["開催時間"];
@@ -972,9 +1007,11 @@ window.EVENT_CONFIG = {
       }
 
       // 次回開催日（予告）— 未入力なら「調整中」。3箇所すべて更新
-      const nextStr = (c["次回開催日"] || "").trim();
+      // GAS側で整形済みの「2026年7月23日（木）」形式が望ましいが、
+      // 生のDate文字列が来ても日本語化する（旧GASデプロイへのフォールバック）。
+      const nextStr = formatToJaDate(c["次回開催日"]);
       document.querySelectorAll(".next-event-date").forEach(el => {
-        el.textContent = nextStr ? nextStr : "調整中";
+        el.textContent = nextStr || "調整中";
       });
 
       // 動的に内容が変わったのでScrollTriggerの位置を再計算（表示崩れ防止）
@@ -982,8 +1019,11 @@ window.EVENT_CONFIG = {
 
       // eventIdが更新された後に残席を再取得（競合防止）
       fetchRemainingSeats();
+      hidePageLoader();
     } catch (_) {
-      // 取得失敗時はEVENT_CONFIGのフォールバック値で残席取得
+      // GAS到達不可：「—」表示のまま残席のみ試行（古い日付を出さない）
+      clearTimeout(loaderFailsafe);
+      hidePageLoader();
       fetchRemainingSeats();
     }
   })();
