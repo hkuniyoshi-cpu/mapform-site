@@ -479,11 +479,14 @@ window.EVENT_CONFIG = {
             </span>
           </div>
 
-          <div class="flex items-end gap-3 mb-6">
+          <div class="flex items-end gap-2 sm:gap-3 mb-6">
+            <div class="mb-4 sm:mb-5">
+              <div class="font-display font-bold leading-none" style="font-size:clamp(20px,3.5vw,28px); color:var(--fg);">残り</div>
+            </div>
             <div class="seats-num font-display font-bold leading-none" style="font-size:clamp(72px,12vw,120px); color:#4285F4;" id="seats-num">--</div>
-            <div class="mb-3">
-              <div class="text-base font-semibold" style="color:var(--fg-dim);">席</div>
-              <div class="font-mono text-[10px] tracking-widest mt-0.5" style="color:var(--fg-mute);">SEATS LEFT</div>
+            <div class="mb-3 sm:mb-4">
+              <div class="font-display font-bold leading-none" style="font-size:clamp(24px,4vw,36px); color:var(--fg);">席</div>
+              <div class="font-mono text-[10px] tracking-widest mt-1" style="color:var(--fg-mute);">SEATS LEFT</div>
             </div>
             <!-- 隠しエレメント（互換性のため残す） -->
             <span id="cap-num" class="hidden"></span>
