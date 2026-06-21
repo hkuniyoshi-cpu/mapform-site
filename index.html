@@ -313,35 +313,66 @@ window.EVENT_CONFIG = {
 <body class="overflow-x-hidden">
 
 <!-- ====================== LOADING OVERLAY ====================== -->
-<div id="page-loader" aria-hidden="true"
-     style="position:fixed; inset:0; z-index:9999; background:#ffffff;
-            display:flex; flex-direction:column; align-items:center; justify-content:center;
-            transition:opacity .5s ease, visibility .5s ease;">
-  <!-- SearchManiaブランドアクセントバー -->
-  <div style="position:absolute; top:0; left:0; right:0; height:4px;
-              background:linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853);"></div>
+<div id="page-loader" aria-hidden="true">
+  <!-- SearchManiaブランドアクセントバー（最上部） -->
+  <div class="page-loader__bar"></div>
 
-  <!-- Logo pill -->
-  <div style="background:linear-gradient(135deg,#4285F4,#34A853); border-radius:14px;
-              padding:10px 26px; margin-bottom:28px;">
-    <span style="color:#fff; font-family:'Inter','Noto Sans JP',sans-serif;
-                 font-weight:700; font-size:18px; letter-spacing:-0.02em;">SearchMania Inc.</span>
+  <!-- 中央コンテンツ -->
+  <div class="page-loader__content">
+    <div class="page-loader__logo">
+      <span>SearchMania Inc.</span>
+    </div>
+    <svg width="44" height="44" viewBox="0 0 44 44" class="page-loader__spinner">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#E8EAED" stroke-width="3.5"/>
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#4285F4" stroke-width="3.5"
+              stroke-linecap="round" stroke-dasharray="28 85" transform="rotate(-90 22 22)">
+        <animateTransform attributeName="transform" type="rotate"
+                          from="0 22 22" to="360 22 22" dur="0.9s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+    <div class="page-loader__text">開催情報を読み込んでいます…</div>
   </div>
-
-  <!-- Spinner -->
-  <svg width="44" height="44" viewBox="0 0 44 44" style="margin-bottom:18px;">
-    <circle cx="22" cy="22" r="18" fill="none" stroke="#E8EAED" stroke-width="3.5"/>
-    <circle cx="22" cy="22" r="18" fill="none" stroke="#4285F4" stroke-width="3.5"
-            stroke-linecap="round" stroke-dasharray="28 85" transform="rotate(-90 22 22)">
-      <animateTransform attributeName="transform" type="rotate"
-                        from="0 22 22" to="360 22 22" dur="0.9s" repeatCount="indefinite"/>
-    </circle>
-  </svg>
-
-  <!-- Text -->
-  <div style="font-family:'Noto Sans JP',sans-serif; font-size:13px;
-              color:#5F6368; letter-spacing:0.08em;">開催情報を読み込んでいます…</div>
 </div>
+<style>
+  #page-loader{
+    position:fixed; top:0; left:0; right:0; bottom:0;
+    width:100vw;
+    height:100vh;          /* fallback */
+    height:100dvh;         /* iOS Safari／Android アドレスバー対応 */
+    z-index:9999;
+    background:#ffffff;
+    transition:opacity .5s ease, visibility .5s ease;
+    /* Grid centering — iOSのflex中央ズレを回避 */
+    display:grid;
+    place-items:center;
+    padding:24px;
+    overscroll-behavior:contain;
+  }
+  .page-loader__bar{
+    position:absolute; top:0; left:0; right:0; height:4px;
+    background:linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853);
+  }
+  .page-loader__content{
+    display:flex; flex-direction:column; align-items:center;
+    text-align:center; max-width:90vw;
+  }
+  .page-loader__logo{
+    background:linear-gradient(135deg,#4285F4,#34A853);
+    border-radius:14px; padding:10px 26px; margin-bottom:28px;
+  }
+  .page-loader__logo span{
+    color:#fff; font-family:'Inter','Noto Sans JP',sans-serif;
+    font-weight:700; font-size:18px; letter-spacing:-0.02em;
+  }
+  .page-loader__spinner{ margin-bottom:18px; }
+  .page-loader__text{
+    font-family:'Noto Sans JP',sans-serif; font-size:13px;
+    color:#5F6368; letter-spacing:0.08em;
+  }
+  /* スクロールを止める（読み込み中の意図しないスクロールを防止） */
+  html.is-loading, body.is-loading{ overflow:hidden; }
+</style>
+<script>document.documentElement.classList.add('is-loading');document.body && document.body.classList.add('is-loading');</script>
 
 <!-- Google-color top accent bar -->
 <div class="g-topbar w-full fixed top-0 left-0 z-[60]"></div>
@@ -378,12 +409,20 @@ window.EVENT_CONFIG = {
     <div class="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
       <div class="lg:col-span-7">
         <!-- Google color dots -->
-        <div class="g-dots mb-6" data-anim="up">
-          <div class="g-dot" style="background:#4285F4"></div>
-          <div class="g-dot" style="background:#EA4335"></div>
-          <div class="g-dot" style="background:#FBBC05"></div>
-          <div class="g-dot" style="background:#34A853"></div>
-          <span class="font-mono text-xs ml-2" style="color:var(--fg-mute); letter-spacing:.1em;">MEO WORKSHOP</span>
+        <div class="g-dots mb-6 flex flex-wrap items-center gap-3" data-anim="up">
+          <div class="flex items-center gap-1.5">
+            <div class="g-dot" style="background:#4285F4"></div>
+            <div class="g-dot" style="background:#EA4335"></div>
+            <div class="g-dot" style="background:#FBBC05"></div>
+            <div class="g-dot" style="background:#34A853"></div>
+            <span class="font-mono text-xs ml-2" style="color:var(--fg-mute); letter-spacing:.1em;">MEO WORKSHOP</span>
+          </div>
+          <!-- 対面開催バッジ -->
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                style="background:#EAF2FE; color:#4285F4; border:1px solid #C5D9FC;">
+            <i data-lucide="users" class="w-3.5 h-3.5"></i>
+            会場で対面開催
+          </span>
         </div>
 
         <h1 class="hero-title mb-6">
@@ -440,19 +479,17 @@ window.EVENT_CONFIG = {
             </span>
           </div>
 
-          <div class="flex items-end gap-3 mb-3">
+          <div class="flex items-end gap-3 mb-6">
             <div class="seats-num font-display font-bold leading-none" style="font-size:clamp(72px,12vw,120px); color:#4285F4;" id="seats-num">--</div>
             <div class="mb-3">
-              <div class="text-sm" style="color:var(--fg-dim);">/&nbsp;<span id="cap-num">--</span>&nbsp;席</div>
+              <div class="text-base font-semibold" style="color:var(--fg-dim);">席</div>
               <div class="font-mono text-[10px] tracking-widest mt-0.5" style="color:var(--fg-mute);">SEATS LEFT</div>
             </div>
+            <!-- 隠しエレメント（互換性のため残す） -->
+            <span id="cap-num" class="hidden"></span>
           </div>
 
-          <div class="h-2 rounded-full overflow-hidden mb-3" style="background:#E8EAED;">
-            <div id="seats-bar" class="h-full transition-all duration-700 rounded-full" style="width:0%;background:linear-gradient(90deg,#4285F4,#34A853);"></div>
-          </div>
-          <div class="flex items-center justify-between text-xs mb-6" style="color:var(--fg-mute);">
-            <span id="filled-label">— 名が申込済</span>
+          <div class="flex items-center justify-end text-xs mb-6">
             <span id="seats-fallback-note" class="hidden" style="color:#FBBC05;">概算（取得失敗）</span>
           </div>
 
@@ -466,16 +503,23 @@ window.EVENT_CONFIG = {
             <span>この席を確保する</span>
           </a>
 
-          <div class="mt-6 pt-6 grid grid-cols-2 gap-4" style="border-top:1px solid var(--line);">
-            <div class="flex items-start gap-2.5">
-              <i data-lucide="users" class="w-4 h-4 mt-0.5" style="color:#4285F4;"></i>
+          <div class="mt-6 pt-6 grid grid-cols-3 gap-3" style="border-top:1px solid var(--line);">
+            <div class="flex items-start gap-2">
+              <i data-lucide="map-pin" class="w-4 h-4 mt-0.5 flex-shrink-0" style="color:#EA4335;"></i>
+              <div>
+                <div class="text-xs" style="color:var(--fg-mute);">形式</div>
+                <div class="text-sm font-medium">対面開催</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-2">
+              <i data-lucide="users" class="w-4 h-4 mt-0.5 flex-shrink-0" style="color:#4285F4;"></i>
               <div>
                 <div class="text-xs" style="color:var(--fg-mute);">定員</div>
                 <div class="text-sm font-medium">少人数制</div>
               </div>
             </div>
-            <div class="flex items-start gap-2.5">
-              <i data-lucide="badge-japanese-yen" class="w-4 h-4 mt-0.5" style="color:#34A853;"></i>
+            <div class="flex items-start gap-2">
+              <i data-lucide="badge-japanese-yen" class="w-4 h-4 mt-0.5 flex-shrink-0" style="color:#34A853;"></i>
               <div>
                 <div class="text-xs" style="color:var(--fg-mute);">参加費</div>
                 <div class="text-sm font-medium">完全無料</div>
@@ -606,7 +650,12 @@ window.EVENT_CONFIG = {
           <div class="w-10 h-10 rounded-full grid place-items-center" style="background:#E6F4EA;">
             <i data-lucide="map-pin" class="w-5 h-5" style="color:#34A853;"></i>
           </div>
-          <div class="font-mono text-[10px] tracking-widest" style="color:var(--fg-mute);">VENUE</div>
+          <div class="font-mono text-[10px] tracking-widest" style="color:var(--fg-mute);">VENUE（対面開催）</div>
+          <span class="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold"
+                style="background:#FEF2F0; color:#EA4335; border:1px solid #F8D2CC;">
+            <i data-lucide="users" class="w-3 h-3"></i>
+            会場参加
+          </span>
         </div>
         <div class="grid md:grid-cols-2 gap-6">
           <div>
@@ -929,6 +978,8 @@ window.EVENT_CONFIG = {
   function hidePageLoader() {
     if (loaderHidden) return;
     loaderHidden = true;
+    document.documentElement.classList.remove("is-loading");
+    document.body.classList.remove("is-loading");
     const el = document.getElementById("page-loader");
     if (!el) return;
     el.style.opacity = "0";
@@ -1232,24 +1283,18 @@ window.EVENT_CONFIG = {
   window.addEventListener("scroll", onScroll, {passive:true}); onScroll();
 
   /* ---------- SEATS ---------- */
-  const seatsNumEl=$("#seats-num"), seatsBarEl=$("#seats-bar"), filledLabelEl=$("#filled-label"), seatsCta=$("#seats-cta");
+  const seatsNumEl=$("#seats-num"), seatsCta=$("#seats-cta");
 
   function setSeatsDisplayLoading(){
     seatsNumEl.textContent="—"; seatsNumEl.classList.add("skeleton");
-    seatsBarEl.style.width="0%"; filledLabelEl.textContent="残席を取得中…";
   }
   function animateSeatsCountdown(remaining){
     seatsNumEl.classList.remove("skeleton");
-    const filled=cfg.capacity-remaining;
     if(prefersReduce){ seatsNumEl.textContent=remaining; }
     else if(window.gsap){
       const obj={n:cfg.capacity};
       gsap.to(obj,{n:remaining, duration:1.4, ease:"expo.out", onUpdate:()=>{ seatsNumEl.textContent=Math.round(obj.n); }});
     } else { seatsNumEl.textContent=remaining; }
-    setTimeout(()=>{
-      seatsBarEl.style.width=Math.min(100,Math.round(filled/cfg.capacity*100))+"%";
-      filledLabelEl.textContent=`${filled} 名が申込済`;
-    },200);
   }
   function showSeatsFallbackNotice(){ $("#seats-fallback-note").classList.remove("hidden"); }
   function showSoldOutState(){
