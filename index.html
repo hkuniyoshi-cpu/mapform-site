@@ -795,20 +795,16 @@ window.EVENT_CONFIG = {
       <p style="color:var(--fg-dim);" data-anim="up">所要 約1分。お申込みいただいた情報は本セミナーの運営のみに使用します。</p>
     </div>
 
-    <!-- 次々回開催予告（フォーム上部・コンパクト） -->
-    <div class="card mb-6 px-5 py-4" data-anim="up" style="border-color:var(--line);">
+    <!-- 今回のテーマ（フォーム上部・テーマが入っていれば表示） -->
+    <div id="form-theme-block" class="hidden card mb-6 px-5 py-4" data-anim="up"
+         style="border-color:rgba(66,133,244,.25); background:linear-gradient(135deg,rgba(66,133,244,.06),rgba(52,168,83,.06));">
       <div class="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center">
         <div class="flex items-center gap-2">
-          <i data-lucide="calendar-clock" class="w-4 h-4" style="color:var(--accent);"></i>
-          <span class="text-xs font-mono tracking-widest font-semibold" style="color:var(--fg-mute);">NEXT EVENT</span>
+          <i data-lucide="sparkles" class="w-4 h-4" style="color:var(--accent);"></i>
+          <span class="text-xs font-mono tracking-widest font-semibold" style="color:var(--accent);">TODAY'S THEME</span>
         </div>
-        <span class="text-sm" style="color:var(--fg-dim);">次々回開催予告：</span>
-        <span class="next-event-date text-base font-bold" style="color:var(--fg);">調整中</span>
-      </div>
-      <div class="next-event-theme-row hidden mt-2 pt-2 flex flex-col sm:flex-row items-center justify-center gap-2 text-center text-sm"
-           style="border-top:1px dashed var(--line);">
-        <span class="font-semibold text-xs" style="color:var(--fg-mute);">テーマ</span>
-        <span class="next-event-theme font-bold leading-snug" style="color:var(--fg);"></span>
+        <span class="text-sm" style="color:var(--fg-dim);">今回のテーマ：</span>
+        <span id="form-current-theme" class="text-base font-bold leading-tight" style="color:var(--fg);"></span>
       </div>
     </div>
 
@@ -1103,13 +1099,15 @@ window.EVENT_CONFIG = {
         el.textContent = nextStr || "調整中";
       });
 
-      // 今回のテーマ（テーマが入っていれば表示、未入力なら非表示）
+      // 今回のテーマ（テーマが入っていれば表示、未入力なら非表示）— ヒーロー+フォーム上部
       const themeStr = (c["テーマ"] || "").toString().trim();
-      const themeBlock = document.getElementById("theme-block");
-      const currentTheme = document.getElementById("current-theme");
-      if (themeStr && themeBlock && currentTheme) {
-        currentTheme.textContent = themeStr;
-        themeBlock.classList.remove("hidden");
+      if (themeStr) {
+        const heroTheme = document.getElementById("current-theme");
+        const heroBlock = document.getElementById("theme-block");
+        if (heroTheme && heroBlock) { heroTheme.textContent = themeStr; heroBlock.classList.remove("hidden"); }
+        const formTheme = document.getElementById("form-current-theme");
+        const formBlock = document.getElementById("form-theme-block");
+        if (formTheme && formBlock) { formTheme.textContent = themeStr; formBlock.classList.remove("hidden"); }
       }
 
       // 次々回テーマ（新キー優先、旧キー後方互換）。入っていれば3箇所表示、未入力なら非表示
