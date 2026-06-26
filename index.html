@@ -221,13 +221,17 @@ window.EVENT_CONFIG = {
   .hero-title{
     font-family: 'Inter','Noto Sans JP', sans-serif;
     font-weight: 800; font-size: clamp(36px,6vw,80px);
-    line-height: 1.05; letter-spacing: -0.035em; color: var(--fg);
+    line-height: 1.25; letter-spacing: -0.035em; color: var(--fg);
   }
   .hero-title .g-gradient{
     background: linear-gradient(135deg, #4285F4 0%, #EA4335 40%, #FBBC05 70%, #34A853 100%);
     -webkit-background-clip:text; background-clip:text; color:transparent;
+    /* グラデーション文字は背景を切り抜くため padding を加えてもクリップされない安全策 */
+    line-height:1.25;
   }
-  .reveal-line{ overflow:hidden; display:block; }
+  /* reveal-line は overflow:hidden でアニメするためディセンダーが切れやすい。
+     padding-bottom で「g」「p」「y」などの下部を確実に表示領域内に収める。 */
+  .reveal-line{ overflow:hidden; display:block; padding-bottom:0.14em; }
 
   /* Google-color dots decoration */
   .g-dots { display:flex; gap:8px; align-items:center; }
@@ -431,6 +435,17 @@ window.EVENT_CONFIG = {
           <span class="block reveal-line"><span class="reveal-inner">90分の診断会。</span></span>
         </h1>
 
+        <!-- 今回のテーマ（スプレッドシートに「テーマ」が入っていれば表示） -->
+        <div id="theme-block" class="hidden mb-6" data-anim="up">
+          <div class="inline-flex flex-wrap items-center gap-3 px-5 py-3 rounded-xl"
+               style="background:linear-gradient(135deg,rgba(66,133,244,.08),rgba(52,168,83,.08));
+                      border:1px solid rgba(66,133,244,.2);">
+            <span class="font-mono text-xs tracking-widest font-bold" style="color:var(--accent);">今回のテーマ</span>
+            <span class="w-px h-4" style="background:rgba(0,0,0,.15);"></span>
+            <span id="current-theme" class="text-base sm:text-lg font-bold leading-tight" style="color:var(--fg);"></span>
+          </div>
+        </div>
+
         <p class="text-lg leading-relaxed max-w-xl mb-10" style="color:var(--fg-dim);" data-anim="up" id="catch-copy"></p>
 
         <div class="flex flex-wrap items-center gap-4 mb-10" data-anim="up">
@@ -536,13 +551,20 @@ window.EVENT_CONFIG = {
         </div>
 
         <!-- 次回開催予告（コンパクト） -->
-        <div class="card mt-4 p-4 flex items-center justify-between gap-3" data-anim="up"
+        <div class="card mt-4 p-4" data-anim="up"
              style="border-color:var(--line); background:var(--bg-2);">
-          <div class="flex items-center gap-2.5">
-            <i data-lucide="calendar-clock" class="w-4 h-4" style="color:var(--accent);"></i>
-            <span class="text-xs font-mono tracking-widest font-semibold" style="color:var(--fg-mute);">NEXT EVENT</span>
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center gap-2.5">
+              <i data-lucide="calendar-clock" class="w-4 h-4" style="color:var(--accent);"></i>
+              <span class="text-xs font-mono tracking-widest font-semibold" style="color:var(--fg-mute);">NEXT EVENT</span>
+            </div>
+            <span class="next-event-date text-sm font-bold" style="color:var(--fg);">調整中</span>
           </div>
-          <span class="next-event-date text-sm font-bold" style="color:var(--fg);">調整中</span>
+          <div class="next-event-theme-row hidden mt-2 pt-2 text-xs flex items-center gap-2"
+               style="border-top:1px dashed var(--line);">
+            <span class="font-semibold" style="color:var(--fg-mute);">テーマ</span>
+            <span class="next-event-theme font-bold leading-snug" style="color:var(--fg);"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -774,14 +796,20 @@ window.EVENT_CONFIG = {
     </div>
 
     <!-- 次回開催予告（フォーム上部・コンパクト） -->
-    <div class="card mb-6 px-5 py-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center"
-         data-anim="up" style="border-color:var(--line);">
-      <div class="flex items-center gap-2">
-        <i data-lucide="calendar-clock" class="w-4 h-4" style="color:var(--accent);"></i>
-        <span class="text-xs font-mono tracking-widest font-semibold" style="color:var(--fg-mute);">NEXT EVENT</span>
+    <div class="card mb-6 px-5 py-4" data-anim="up" style="border-color:var(--line);">
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center">
+        <div class="flex items-center gap-2">
+          <i data-lucide="calendar-clock" class="w-4 h-4" style="color:var(--accent);"></i>
+          <span class="text-xs font-mono tracking-widest font-semibold" style="color:var(--fg-mute);">NEXT EVENT</span>
+        </div>
+        <span class="text-sm" style="color:var(--fg-dim);">次回開催予告：</span>
+        <span class="next-event-date text-base font-bold" style="color:var(--fg);">調整中</span>
       </div>
-      <span class="text-sm" style="color:var(--fg-dim);">次回開催予告：</span>
-      <span class="next-event-date text-base font-bold" style="color:var(--fg);">調整中</span>
+      <div class="next-event-theme-row hidden mt-2 pt-2 flex flex-col sm:flex-row items-center justify-center gap-2 text-center text-sm"
+           style="border-top:1px dashed var(--line);">
+        <span class="font-semibold text-xs" style="color:var(--fg-mute);">テーマ</span>
+        <span class="next-event-theme font-bold leading-snug" style="color:var(--fg);"></span>
+      </div>
     </div>
 
     <!-- Sold out overlay -->
@@ -875,6 +903,12 @@ window.EVENT_CONFIG = {
         <div class="font-mono text-xs tracking-widest font-semibold" style="color:var(--accent);">NEXT DATE</div>
         <div class="next-event-date font-display text-3xl md:text-4xl font-bold leading-tight"
              style="color:var(--fg);">調整中</div>
+        <div class="next-event-theme-row hidden mt-3 pt-4 flex flex-col items-center gap-1"
+             style="border-top:1px dashed var(--line); align-self:stretch;">
+          <span class="font-mono text-[10px] tracking-widest font-semibold" style="color:var(--fg-mute);">THEME</span>
+          <span class="next-event-theme text-base md:text-lg font-bold leading-snug text-center"
+                style="color:var(--fg);"></span>
+        </div>
       </div>
 
       <p class="text-sm leading-relaxed mt-8" style="color:var(--fg-dim);">
@@ -1067,6 +1101,22 @@ window.EVENT_CONFIG = {
       document.querySelectorAll(".next-event-date").forEach(el => {
         el.textContent = nextStr || "調整中";
       });
+
+      // 今回のテーマ（テーマが入っていれば表示、未入力なら非表示）
+      const themeStr = (c["テーマ"] || "").toString().trim();
+      const themeBlock = document.getElementById("theme-block");
+      const currentTheme = document.getElementById("current-theme");
+      if (themeStr && themeBlock && currentTheme) {
+        currentTheme.textContent = themeStr;
+        themeBlock.classList.remove("hidden");
+      }
+
+      // 次回テーマ（次回テーマが入っていれば3箇所表示、未入力なら非表示）
+      const nextTheme = (c["次回テーマ"] || "").toString().trim();
+      if (nextTheme) {
+        document.querySelectorAll(".next-event-theme").forEach(el => { el.textContent = nextTheme; });
+        document.querySelectorAll(".next-event-theme-row").forEach(el => el.classList.remove("hidden"));
+      }
 
       // 動的に内容が変わったのでScrollTriggerの位置を再計算（表示崩れ防止）
       if (window.ScrollTrigger) ScrollTrigger.refresh();
