@@ -56,8 +56,8 @@ const DEFAULT_CONFIG = [
   ["地図リンク", "https://maps.app.goo.gl/rYUED1nsaJ7CEat17"],
   ["地図埋込URL","https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d894.865614533331!2d127.6954395!3d26.2141591!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x34e569cb16dea07d%3A0x1a20f9f3ebacd842!2z44OE44Oc44OQ44OrQ2FmZe-8hkJhcg!5e0!3m2!1sja!2sjp!4v1778600875620!5m2!1sja!2sjp"],
   ["駐車場",     "先着4台店舗前 / 近隣コインパーキングあり（有料）"],
-  ["次回開催日", ""],  // 予告用。空欄ならWEBで「調整中」と表示
-  ["次回テーマ", ""]   // 次回のテーマ。空欄ならWEB上に表示されない
+  ["次々回開催日", ""],  // 予告用。本ページの申込み対象（=次回）の次の開催。空欄ならWEBで「調整中」と表示
+  ["次々回テーマ", ""]   // 次々回のテーマ。空欄ならWEB上に表示されない
 ];
 
 // =============================================
@@ -170,16 +170,17 @@ function setupSheets() {
   configSheet.setColumnWidth(1, 180);
   configSheet.setColumnWidth(2, 500);
 
-  // 「開催日」「次回開催日」セルをカレンダー入力に設定
+  // 「開催日」「次々回開催日」セルをカレンダー入力に設定（旧名「次回開催日」も後方互換）
   var cfgData = configSheet.getRange(2, 1, configSheet.getLastRow() - 1, 2).getValues();
   cfgData.forEach(function(row, i) {
-    if (row[0] === "開催日" || row[0] === "次回開催日") {
+    var k = row[0];
+    var isPreviewDate = (k === "次々回開催日" || k === "次回開催日");
+    if (k === "開催日" || isPreviewDate) {
       var cell = configSheet.getRange(i + 2, 2);
       cell.setNumberFormat("yyyy/MM/dd");
-      // 開催日は必須（厳格）／次回開催日は空欄可（予告未定→WEBで「調整中」）
-      var allowEmpty = (row[0] === "次回開催日");
+      // 開催日は必須（厳格）／次々回開催日は空欄可（予告未定→WEBで「調整中」）
       cell.setDataValidation(
-        SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(allowEmpty).build()
+        SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(isPreviewDate).build()
       );
     }
   });
@@ -382,10 +383,10 @@ function readConfig_(ss) {
       } else if (val) {
         cfg["開催日"] = val.toString();
       }
-    } else if (key === "次回開催日") {
-      // 予告用。空欄なら空文字（WEB側で「調整中」表示）
+    } else if (key === "次々回開催日" || key === "次回開催日") {
+      // 予告用。空欄なら空文字（WEB側で「調整中」表示）。旧名「次回開催日」も読む（後方互換）
       var nextObj = parseDate_(val);
-      cfg["次回開催日"] = nextObj ? formatJpDate_(nextObj) : (val ? val.toString().trim() : "");
+      cfg[key] = nextObj ? formatJpDate_(nextObj) : (val ? val.toString().trim() : "");
     } else {
       cfg[key] = val !== undefined ? val.toString() : "";
     }

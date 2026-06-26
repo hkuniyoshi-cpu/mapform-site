@@ -550,7 +550,7 @@ window.EVENT_CONFIG = {
           <span>申込みは1分で完了します</span>
         </div>
 
-        <!-- 次回開催予告（コンパクト） -->
+        <!-- 次々回開催予告（コンパクト） -->
         <div class="card mt-4 p-4" data-anim="up"
              style="border-color:var(--line); background:var(--bg-2);">
           <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -795,14 +795,14 @@ window.EVENT_CONFIG = {
       <p style="color:var(--fg-dim);" data-anim="up">所要 約1分。お申込みいただいた情報は本セミナーの運営のみに使用します。</p>
     </div>
 
-    <!-- 次回開催予告（フォーム上部・コンパクト） -->
+    <!-- 次々回開催予告（フォーム上部・コンパクト） -->
     <div class="card mb-6 px-5 py-4" data-anim="up" style="border-color:var(--line);">
       <div class="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center">
         <div class="flex items-center gap-2">
           <i data-lucide="calendar-clock" class="w-4 h-4" style="color:var(--accent);"></i>
           <span class="text-xs font-mono tracking-widest font-semibold" style="color:var(--fg-mute);">NEXT EVENT</span>
         </div>
-        <span class="text-sm" style="color:var(--fg-dim);">次回開催予告：</span>
+        <span class="text-sm" style="color:var(--fg-dim);">次々回開催予告：</span>
         <span class="next-event-date text-base font-bold" style="color:var(--fg);">調整中</span>
       </div>
       <div class="next-event-theme-row hidden mt-2 pt-2 flex flex-col sm:flex-row items-center justify-center gap-2 text-center text-sm"
@@ -896,7 +896,7 @@ window.EVENT_CONFIG = {
       <div style="position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853);"></div>
 
       <div class="eyebrow inline-flex mb-5">Next Event</div>
-      <h2 class="section-title mb-8">次回開催予告</h2>
+      <h2 class="section-title mb-8">次々回開催予告</h2>
 
       <div class="inline-flex flex-col items-center gap-3 px-8 py-7 rounded-2xl"
            style="background:var(--bg-2); border:1px solid var(--line); min-width:min(360px,90%);">
@@ -1094,10 +1094,11 @@ window.EVENT_CONFIG = {
         if (iframe) iframe.src = c["地図埋込URL"];
       }
 
-      // 次回開催日（予告）— 未入力なら「調整中」。3箇所すべて更新
+      // 次々回開催日（予告）— 未入力なら「調整中」。3箇所すべて更新
+      // 新キー「次々回開催日」を優先、旧キー「次回開催日」も読む（後方互換）。
       // GAS側で整形済みの「2026年7月23日（木）」形式が望ましいが、
       // 生のDate文字列が来ても日本語化する（旧GASデプロイへのフォールバック）。
-      const nextStr = formatToJaDate(c["次回開催日"]);
+      const nextStr = formatToJaDate(c["次々回開催日"] || c["次回開催日"]);
       document.querySelectorAll(".next-event-date").forEach(el => {
         el.textContent = nextStr || "調整中";
       });
@@ -1111,8 +1112,8 @@ window.EVENT_CONFIG = {
         themeBlock.classList.remove("hidden");
       }
 
-      // 次回テーマ（次回テーマが入っていれば3箇所表示、未入力なら非表示）
-      const nextTheme = (c["次回テーマ"] || "").toString().trim();
+      // 次々回テーマ（新キー優先、旧キー後方互換）。入っていれば3箇所表示、未入力なら非表示
+      const nextTheme = (c["次々回テーマ"] || c["次回テーマ"] || "").toString().trim();
       if (nextTheme) {
         document.querySelectorAll(".next-event-theme").forEach(el => { el.textContent = nextTheme; });
         document.querySelectorAll(".next-event-theme-row").forEach(el => el.classList.remove("hidden"));
