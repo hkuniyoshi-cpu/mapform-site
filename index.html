@@ -342,12 +342,94 @@ window.EVENT_CONFIG = {
     font-size:12px; color:var(--fg-dim);
   }
 
-  /* Mobile optimizations */
+  /* ===== Mobile optimizations（想定される全モバイル端末での崩れを防止） ===== */
+  /* iPhone SE / Android 中～大（〜640px） */
   @media (max-width:640px){
-    .hero-title{ font-size: clamp(32px, 8vw, 52px); }
+    .hero-title{ font-size: clamp(30px, 8vw, 48px); line-height:1.25; }
     h2.section-title{ font-size: clamp(22px, 6vw, 32px); }
     .section-pad{ padding: 48px 0; }
+
+    /* iOSでinputフォーカス時のズーム防止（<16px は自動ズーム発火） */
+    input, select, textarea, .field{ font-size:16px !important; }
+
+    /* タップターゲット最小44px（Apple/Google推奨） */
+    button, a.btn-primary, a.btn-ghost, .share-btn-pill, .btn-primary, .btn-ghost{
+      min-height:44px;
+    }
+
+    /* 長いメール・URL・住所が横に溢れないように改行を許可 */
+    p, .field, #venue-address, #venue-name, .footer-link, span, div{
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+    /* 但しコード表記は元通り */
+    code, pre, .font-mono{ overflow-wrap:normal; word-break:normal; }
+
+    /* ヒーローのファクトボックス（DATE/TIME/FEE/DURATION）：ラベルとの間隔・パディング微調整 */
+    .hero-title + div .grid.grid-cols-2{ gap:10px; }
+
+    /* 残席数字：極小画面での視認バランス */
+    #seats-num{ font-size: clamp(64px, 18vw, 92px) !important; }
+
+    /* 講師写真セクション：文字が写真下に来た時のレイアウト調整 */
+    .instructor-card{ text-align:center; }
+
+    /* Sticky nav は上端に貼る（safe-area対応） */
+    #topnav > div{ padding-top:10px; padding-bottom:10px; }
+
+    /* シェアポップオーバー：画面幅から溢れないように */
+    #share-popover{
+      left:12px !important; right:12px !important;
+      max-width:calc(100vw - 24px);
+    }
+    #share-popover > .card{ min-width:0 !important; width:100%; }
+
+    /* ローディングロゴ：極小画面でも中央に収まる */
+    .page-loader__logo{ padding:8px 20px; }
+    .page-loader__logo span{ font-size:16px; }
   }
+
+  /* iPhone SE 第1世代・小型Android（〜380px） */
+  @media (max-width:380px){
+    .hero-title{ font-size: clamp(26px, 8.5vw, 36px); }
+    h2.section-title{ font-size: clamp(20px, 6vw, 26px); }
+    .section-pad{ padding: 40px 0; }
+
+    /* コンテナ側の左右余白を少し詰める */
+    .max-w-7xl.px-4, .max-w-3xl.px-4, .max-w-2xl.px-4{
+      padding-left:14px; padding-right:14px;
+    }
+
+    /* CTA ボタン：長い文字を小さめに */
+    .btn-primary{ padding-left:18px; padding-right:18px; font-size:13px; }
+
+    /* 残席数字：極小画面ではさらに一段小さく */
+    #seats-num{ font-size: 60px !important; }
+
+    /* シェア丸ボタンの文字を1段小さく */
+    .share-btn-pill{ padding:8px 14px !important; font-size:13px !important; }
+
+    /* ヘッダー内ロゴ */
+    #topnav a[href*="search-mania"] span{ font-size:13px !important; padding:6px 14px !important; }
+  }
+
+  /* iPhone 横向き（低い画面高さ）でヒーローが縦に長すぎないよう調整 */
+  @media (max-height:500px) and (orientation:landscape){
+    .hero-title{ font-size: clamp(22px, 5vw, 32px); line-height:1.2; }
+    .section-pad{ padding: 32px 0; }
+  }
+
+  /* iPhone のノッチ・ホームインジケータ対策 */
+  @supports (padding: env(safe-area-inset-top)){
+    #topnav{ padding-top: env(safe-area-inset-top); }
+    body{ padding-bottom: env(safe-area-inset-bottom); }
+  }
+
+  /* 画像・iframeが横方向に絶対に溢れないよう保険 */
+  img, iframe, video{ max-width:100%; height:auto; }
+
+  /* Tab/フォーカスの視認性（キーボード操作時のみ） */
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
 </style>
 </head>
 
@@ -780,7 +862,17 @@ window.EVENT_CONFIG = {
     <div class="text-center mb-10">
       <div class="eyebrow inline-flex mb-5" data-anim="up">Gallery</div>
       <h2 class="section-title mb-3" data-anim="up">これまでの開催の様子</h2>
-      <p class="text-sm" style="color:var(--fg-dim);" data-anim="up">これまでの診断会・勉強会で行われた風景をご紹介します。</p>
+      <p class="text-sm mb-6" style="color:var(--fg-dim);" data-anim="up">これまでの診断会・勉強会で行われた風景をご紹介します。</p>
+
+      <!-- 実績バッジ -->
+      <div class="inline-flex flex-wrap items-center justify-center gap-3 px-6 py-3 rounded-full" data-anim="up"
+           style="background:#fff; border:1px solid var(--line); box-shadow:0 4px 16px rgba(0,0,0,.05);">
+        <span class="font-mono text-[10px] tracking-widest font-semibold" style="color:var(--accent);">TRACK RECORD</span>
+        <span class="w-px h-4" style="background:rgba(0,0,0,.15);"></span>
+        <span class="text-sm sm:text-base font-bold" style="color:var(--fg);">
+          延べ <span class="font-display text-xl sm:text-2xl" style="color:var(--accent);">50</span> 社の事業者様が受講
+        </span>
+      </div>
     </div>
   </div>
   <!-- マルキー本体は max-width を取らず画面端まで流す -->
