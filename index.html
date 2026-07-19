@@ -342,6 +342,29 @@ window.EVENT_CONFIG = {
     font-size:12px; color:var(--fg-dim);
   }
 
+  /* ===== ヘッダー（全モバイル：Xiaomi/Pixel/iPhone等の中〜大幅対応） ===== */
+  @media (max-width:767px){
+    /* SearchManiaロゴピルを縮小して全要素が横並びに収まるようにする */
+    #topnav a[href*="search-mania.net"] > span{
+      padding:6px 14px !important;
+      border-radius:12px !important;
+    }
+    #topnav a[href*="search-mania.net"] > span > span{
+      font-size:13px !important;
+      letter-spacing:-0.03em !important;
+    }
+    /* 申込むボタンをコンパクトに */
+    #topnav a[href="#apply"].btn-primary{
+      padding:8px 14px !important;
+      font-size:13px !important;
+      white-space:nowrap;
+    }
+    /* シェアボタンは 36px 円形を維持しつつマージン節約 */
+    #share-btn-header{ flex-shrink:0; }
+    /* ヘッダー全体の左右パディングを詰める */
+    #topnav > div{ padding-left:12px !important; padding-right:12px !important; }
+  }
+
   /* ===== Mobile optimizations（想定される全モバイル端末での崩れを防止） ===== */
   /* iPhone SE / Android 中～大（〜640px） */
   @media (max-width:640px){
@@ -1711,6 +1734,100 @@ window.EVENT_CONFIG = {
   $("#thanks-close").addEventListener("click", hideModal);
   modal.addEventListener("click", e=>{ if(e.target===modal) hideModal(); });
   window.addEventListener("keydown", e=>{ if(e.key==="Escape") hideModal(); });
+
+  /* ---------- SHARE（ヘッダーボタン + フッターピル + ポップオーバー） ---------- */
+  (function setupShare(){
+    const pageUrl   = location.href;
+    const pageTitle = document.title;
+    const shareText = `${pageTitle}\nMEO・Googleマップ集客の無料セミナーです。\n${pageUrl}`;
+
+    const SHARE_URLS = {
+      line:     `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(pageUrl)}`,
+      x:        `https://twitter.com/intent/tweet?url=${encodeURIComponent(pageUrl)}&text=${encodeURIComponent(pageTitle)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`,
+      email:    `mailto:?subject=${encodeURIComponent(pageTitle)}&body=${encodeURIComponent(shareText)}`
+    };
+
+    // すべての data-share 要素にhref / clickを設定（ヘッダー popover + フッター共通）
+    $$('[data-share]').forEach(el => {
+      const kind = el.dataset.share;
+      if (SHARE_URLS[kind] && el.tagName === 'A') {
+        el.href = SHARE_URLS[kind];
+        if (kind !== 'email') el.target = '_blank';
+      }
+      if (kind === 'copy') {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          try { await navigator.clipboard.writeText(pageUrl); showCopyToast(); }
+          catch (_) {
+            const ta = document.createElement('textarea');
+            ta.value = pageUrl; document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); showCopyToast(); } catch (e) {}
+            document.body.removeChild(ta);
+          }
+        });
+      }
+    });
+
+    function showCopyToast() {
+      const toast = document.getElementById('copy-toast');
+      if (!toast) return;
+      toast.classList.remove('hidden');
+      clearTimeout(showCopyToast._t);
+      showCopyToast._t = setTimeout(() => toast.classList.add('hidden'), 2200);
+    }
+
+    // ヘッダーのシェアボタン：常にポップオーバー方式（Web Share APIは環境依存で使わない）
+    const headerBtn = document.getElementById('share-btn-header');
+    const popover   = document.getElementById('share-popover');
+    if (!headerBtn || !popover) return;
+
+    function positionPopover() {
+      const rect = headerBtn.getBoundingClientRect();
+      if (window.innerWidth <= 640) {
+        // モバイル：画面左右端に12px余白で固定（見切れ防止）
+        popover.style.top = (rect.bottom + 8) + 'px';
+        popover.style.left = '12px';
+        popover.style.right = '12px';
+      } else {
+        popover.style.top = (rect.bottom + 8) + 'px';
+        popover.style.right = (window.innerWidth - rect.right) + 'px';
+        popover.style.left = 'auto';
+      }
+    }
+    function togglePopover() {
+      const isHidden = popover.classList.contains('hidden');
+      if (isHidden) {
+        positionPopover();
+        popover.classList.remove('hidden');
+        popover.setAttribute('aria-hidden', 'false');
+      } else {
+        popover.classList.add('hidden');
+        popover.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    headerBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      togglePopover();
+    });
+
+    // 外側タップ/クリックで閉じる
+    document.addEventListener('click', (e) => {
+      if (popover.classList.contains('hidden')) return;
+      if (!popover.contains(e.target) && !headerBtn.contains(e.target)) {
+        popover.classList.add('hidden');
+        popover.setAttribute('aria-hidden', 'true');
+      }
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !popover.classList.contains('hidden')) {
+        popover.classList.add('hidden');
+      }
+    });
+    window.addEventListener('resize', () => { if (!popover.classList.contains('hidden')) positionPopover(); });
+  })();
 
   window.lucide && lucide.createIcons();
 })();
