@@ -380,13 +380,26 @@ window.EVENT_CONFIG = {
       min-height:44px;
     }
 
-    /* 長いメール・URL・住所が横に溢れないように改行を許可 */
-    p, .field, #venue-address, #venue-name, .footer-link, span, div{
+    /* 長いメール・URL・住所だけに anywhere 改行を許可
+       （日本語本文には適用しない：文の途中で不自然に折れるため） */
+    #venue-address, #venue-name, a[href^="mailto:"], a[href^="http"] {
       overflow-wrap:anywhere;
       word-break:break-word;
     }
-    /* 但しコード表記は元通り */
-    code, pre, .font-mono{ overflow-wrap:normal; word-break:normal; }
+    /* 日付・時間など「まとまりで読みたい」値は改行させない */
+    #fact-date, #fact-time, #fact-fee, #fact-dur,
+    #detail-date, #detail-time, .next-event-date{
+      white-space:nowrap;
+    }
+
+    /* ファクトボックス（DATE/TIME/FEE/DURATION）：nowrap時に溢れないよう文字サイズと余白を調整 */
+    .hero-title ~ .grid > div{ padding:14px !important; }
+    #fact-date, #fact-time, #fact-fee, #fact-dur{
+      font-size:14px !important;
+      line-height:1.3 !important;
+    }
+    /* 開催詳細セクションの大きな日付表示も溢れ対策 */
+    #detail-date{ font-size:20px !important; }
 
     /* ヒーローのファクトボックス（DATE/TIME/FEE/DURATION）：ラベルとの間隔・パディング微調整 */
     .hero-title + div .grid.grid-cols-2{ gap:10px; }
