@@ -73,9 +73,60 @@ function onOpen() {
     .addItem("↕ 申込一覧：新しい順に並べ替え", "sortByDateDesc")
     .addItem("↕ 申込一覧：名前順に並べ替え",   "sortByName")
     .addSeparator()
-    .addItem("🔧 初期セットアップ（初回のみ）", "setupSheets")
+    .addItem("⚡ 設定シートを最新化（既存データ保持）", "upgradeConfigSheet")
+    .addItem("🔧 初期セットアップ（初回のみ・既存データ消去）", "setupSheets")
     .addItem("⏰ リマインドトリガー設定",        "setupReminderTrigger")
     .addToUi();
+}
+
+// =============================================
+// 設定シートを最新化：既存データを保持したまま
+// DEFAULT_CONFIG にあって設定シートに無い項目だけを追加
+// （新機能を追加した後、ユーザーが手動で行を足さなくて済むように）
+// =============================================
+function upgradeConfigSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ui = SpreadsheetApp.getUi();
+  var sheet = ss.getSheetByName(CONFIG_SHEET);
+  if (!sheet) {
+    ui.alert("「設定」シートが見つかりません。先に「初期セットアップ」を実行してください。");
+    return;
+  }
+  var lastRow = sheet.getLastRow();
+  var existing = lastRow >= 2
+    ? sheet.getRange(2, 1, lastRow - 1, 1).getValues().map(function(r){ return (r[0]||"").toString().trim(); })
+    : [];
+  var added = 0;
+  DEFAULT_CONFIG.forEach(function(row) {
+    var key = row[0];
+    if (existing.indexOf(key) === -1) {
+      sheet.appendRow(row);
+      added++;
+    }
+  });
+  // 「開催日」「次々回開催日」「開催形式」に validation / 書式を（再）適用
+  var newLast = sheet.getLastRow();
+  var cfgData = sheet.getRange(2, 1, newLast - 1, 2).getValues();
+  cfgData.forEach(function(row, i) {
+    var k = row[0];
+    var isPreviewDate = (k === "次々回開催日" || k === "次回開催日");
+    var cell = sheet.getRange(i + 2, 2);
+    if (k === "開催日" || isPreviewDate) {
+      cell.setNumberFormat("yyyy/MM/dd");
+      cell.setDataValidation(
+        SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(isPreviewDate).build()
+      );
+    } else if (k === "開催形式") {
+      cell.setDataValidation(
+        SpreadsheetApp.newDataValidation()
+          .requireValueInList(["対面", "オンライン"], true)
+          .setAllowInvalid(false)
+          .build()
+      );
+      cell.setBackground("#EAF2FE");
+    }
+  });
+  ui.alert("✅ 設定シートを最新化しました。\n\n追加された項目数：" + added + "\n\n既存データは全て保持されています。");
 }
 
 // =============================================
