@@ -342,6 +342,30 @@ window.EVENT_CONFIG = {
     font-size:12px; color:var(--fg-dim);
   }
 
+  /* ===== オンライン開催時のバッジ強調（パルス光） ===== */
+  .badge-pulse{
+    animation: badge-glow 2.2s ease-in-out infinite;
+  }
+  @keyframes badge-glow{
+    0%, 100% { box-shadow: 0 4px 14px rgba(66,133,244,.35); transform: translateY(0); }
+    50%       { box-shadow: 0 6px 24px rgba(66,133,244,.55); transform: translateY(-1px); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .badge-pulse{ animation: none; }
+  }
+
+  /* ===== 日付・時間などのファクトボックス表示（全画面幅で改行防止） ===== */
+  #fact-date, #fact-time, #fact-fee, #fact-dur,
+  #detail-date, #detail-time, .next-event-date{
+    white-space:nowrap;
+  }
+  /* ファクトボックス（ヒーロー下 DATE/TIME/FEE/DURATION）：
+     nowrap時にボックスから溢れないよう文字サイズを常時抑制 */
+  #fact-date, #fact-time, #fact-fee, #fact-dur{
+    font-size: clamp(13px, 1.4vw, 18px) !important;
+    line-height:1.3 !important;
+  }
+
   /* ===== ヘッダー（全モバイル：Xiaomi/Pixel/iPhone等の中〜大幅対応） ===== */
   @media (max-width:767px){
     /* SearchManiaロゴピルを縮小して全要素が横並びに収まるようにする */
@@ -386,18 +410,8 @@ window.EVENT_CONFIG = {
       overflow-wrap:anywhere;
       word-break:break-word;
     }
-    /* 日付・時間など「まとまりで読みたい」値は改行させない */
-    #fact-date, #fact-time, #fact-fee, #fact-dur,
-    #detail-date, #detail-time, .next-event-date{
-      white-space:nowrap;
-    }
-
-    /* ファクトボックス（DATE/TIME/FEE/DURATION）：nowrap時に溢れないよう文字サイズと余白を調整 */
+    /* ファクトボックス（DATE/TIME/FEE/DURATION）：モバイルはボックス余白を詰める */
     .hero-title ~ .grid > div{ padding:14px !important; }
-    #fact-date, #fact-time, #fact-fee, #fact-dur{
-      font-size:14px !important;
-      line-height:1.3 !important;
-    }
     /* 開催詳細セクションの大きな日付表示も溢れ対策 */
     #detail-date{ font-size:20px !important; }
 
@@ -697,10 +711,10 @@ window.EVENT_CONFIG = {
 
           <div class="mt-6 pt-6 grid grid-cols-3 gap-3" style="border-top:1px solid var(--line);">
             <div class="flex items-start gap-2">
-              <i data-lucide="map-pin" class="w-4 h-4 mt-0.5 flex-shrink-0" style="color:#EA4335;"></i>
+              <i id="seats-format-icon" data-lucide="map-pin" class="w-4 h-4 mt-0.5 flex-shrink-0" style="color:#EA4335;"></i>
               <div>
                 <div class="text-xs" style="color:var(--fg-mute);">形式</div>
-                <div class="text-sm font-medium">対面開催</div>
+                <div id="seats-format-text" class="text-sm font-medium">対面開催</div>
               </div>
             </div>
             <div class="flex items-start gap-2">
@@ -1374,26 +1388,66 @@ window.EVENT_CONFIG = {
   function applyEventFormat(format, c) {
     const isOnline = (format === "オンライン");
 
-    // ヒーローのバッジ
+    // ヒーローのバッジ（オンライン時は目立たせる：大きめパディング＋パルスアニメ）
     const badge     = document.getElementById("format-badge");
     const badgeText = document.getElementById("format-badge-text");
     const badgeIcon = document.getElementById("format-badge-icon");
     if (badge && badgeText) {
       if (isOnline) {
         badgeText.textContent = "オンライン開催（Zoom）";
-        badge.style.background = "#EAF2FE";
-        badge.style.color = "#4285F4";
-        badge.style.borderColor = "#C5D9FC";
+        badge.style.background = "linear-gradient(135deg,#4285F4,#34A853)";
+        badge.style.color = "#ffffff";
+        badge.style.borderColor = "transparent";
+        badge.style.padding = "6px 14px";
+        badge.style.fontSize = "13px";
+        badge.style.boxShadow = "0 4px 14px rgba(66,133,244,.35)";
+        badge.classList.add("badge-pulse");
         if (badgeIcon) badgeIcon.setAttribute("data-lucide", "video");
       } else {
         badgeText.textContent = "会場で対面開催";
         badge.style.background = "#FEF2F0";
         badge.style.color = "#EA4335";
         badge.style.borderColor = "#F8D2CC";
+        badge.style.padding = "";
+        badge.style.fontSize = "";
+        badge.style.boxShadow = "";
+        badge.classList.remove("badge-pulse");
         if (badgeIcon) badgeIcon.setAttribute("data-lucide", "map-pin");
       }
       // lucide再描画（アイコン差し替えのため）
       if (window.lucide) lucide.createIcons();
+    }
+
+    // 残席カードの「形式」行を更新
+    const seatsFormatText = document.getElementById("seats-format-text");
+    const seatsFormatIcon = document.getElementById("seats-format-icon");
+    if (seatsFormatText && seatsFormatIcon) {
+      if (isOnline) {
+        seatsFormatText.textContent = "オンライン開催";
+        seatsFormatText.style.color = "#4285F4";
+        seatsFormatText.style.fontWeight = "700";
+        seatsFormatIcon.setAttribute("data-lucide", "video");
+        seatsFormatIcon.style.color = "#4285F4";
+      } else {
+        seatsFormatText.textContent = "対面開催";
+        seatsFormatText.style.color = "";
+        seatsFormatText.style.fontWeight = "";
+        seatsFormatIcon.setAttribute("data-lucide", "map-pin");
+        seatsFormatIcon.style.color = "#EA4335";
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // 残席カード全体をオンライン時は青枠で強調
+    const seatsCard = document.querySelector('[data-anim="right"] > .card');
+    if (seatsCard) {
+      if (isOnline) {
+        seatsCard.style.borderColor = "#4285F4";
+        seatsCard.style.boxShadow = "0 4px 32px rgba(66,133,244,.22)";
+      } else {
+        seatsCard.style.borderColor = ""; // 元のCSS値に戻す
+        seatsCard.style.boxShadow = "";
+      }
     }
 
     // VENUE ブロックの切替
