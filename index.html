@@ -1697,10 +1697,23 @@ window.EVENT_CONFIG = {
       gsap.set(".reveal-inner", { yPercent: 120 });
       gsap.to(".reveal-inner", { yPercent: 0, duration: 1.5, ease: "back.out(1.6)", stagger: 0.2, delay: 0.1 });
 
-      gsap.from('.g-dots', { y: 20, opacity: 0, duration: 0.8, ease: "expo.out", delay: 0.05 });
-      gsap.from('#top [data-anim="up"]', { y: 50, opacity: 0, scale: 0.97, duration: 1.1, ease: "back.out(1.3)", stagger: 0.1, delay: 0.7 });
+      // 注: 以前 .g-dots に独立 gsap.from を掛けていたが、
+      // その要素は #top [data-anim="up"] にも該当し二重にキャプチャされ、
+      // 後発アニメが中途半端な opacity を "現状" として保存し opacity 0.x で固着していた。
+      // よって [data-anim="up"] 一本に集約する。
+      gsap.from('#top [data-anim="up"]', { y: 50, opacity: 0, scale: 0.97, duration: 1.1, ease: "back.out(1.3)", stagger: 0.1, delay: 0.4 });
       gsap.from('#top [data-anim="right"]', { x: 80, opacity: 0, scale: 0.94, duration: 1.4, ease: "elastic.out(1, 0.55)", delay: 0.5 });
     }
+
+    // GSAPアニメが何らかの理由で完了しなかった場合の安全網（3秒後に強制表示）
+    setTimeout(() => {
+      document.querySelectorAll('#top [data-anim]').forEach(el => {
+        const cs = getComputedStyle(el);
+        if (parseFloat(cs.opacity) < 0.98) {
+          gsap.set(el, { opacity: 1, y: 0, x: 0, scale: 1, clearProps: "transform" });
+        }
+      });
+    }, 3000);
 
     $$('[data-anim]').forEach((el, i) => {
       if (el.closest("#top")) return;
