@@ -342,6 +342,17 @@ window.EVENT_CONFIG = {
     font-size:12px; color:var(--fg-dim);
   }
 
+  /* ===== 参加方法CTAの無効状態（対面／オンラインどちらかが不可の時） ===== */
+  .cta-disabled{
+    background:#E8EAED !important;
+    color:#9AA0A6 !important;
+    cursor:not-allowed !important;
+    pointer-events:none !important;
+    box-shadow:none !important;
+    opacity:0.85;
+  }
+  .cta-disabled::before{ display:none !important; }
+
   /* ===== オンライン開催時のバッジ強調（パルス光） ===== */
   .badge-pulse{
     animation: badge-glow 2.2s ease-in-out infinite;
@@ -636,14 +647,27 @@ window.EVENT_CONFIG = {
 
         <p class="text-lg leading-relaxed max-w-xl mb-10" style="color:var(--fg-dim);" data-anim="up" id="catch-copy"></p>
 
-        <div class="flex flex-wrap items-center gap-4 mb-10" data-anim="up">
-          <span class="magnet">
-            <a href="#apply" class="btn-primary inline-flex items-center gap-2 px-8 py-4 text-sm">
+        <!-- 参加方法別CTA（開催形式に応じて有効/無効が切り替わる） -->
+        <div class="flex flex-wrap items-stretch gap-3 mb-4" data-anim="up">
+          <div class="flex flex-col">
+            <a id="cta-offline" href="#apply" data-cta-format="対面"
+               class="btn-primary inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm">
               <i data-lucide="map-pin" class="w-4 h-4"></i>
-              <span>無料で参加申込み</span>
+              <span>対面で参加する</span>
             </a>
-          </span>
-          <a href="#about" class="btn-ghost inline-flex items-center gap-2 px-6 py-4 text-sm">
+            <div id="cta-offline-note" class="hidden mt-1.5 text-xs text-center" style="color:var(--danger);"></div>
+          </div>
+          <div class="flex flex-col">
+            <a id="cta-online" href="#apply" data-cta-format="オンライン"
+               class="btn-primary inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm">
+              <i data-lucide="video" class="w-4 h-4"></i>
+              <span>Zoomで参加する</span>
+            </a>
+            <div id="cta-online-note" class="hidden mt-1.5 text-xs text-center" style="color:var(--danger);"></div>
+          </div>
+        </div>
+        <div class="mb-10" data-anim="up">
+          <a href="#about" class="btn-ghost inline-flex items-center gap-2 px-6 py-3.5 text-sm">
             <i data-lucide="chevron-down" class="w-4 h-4"></i>
             <span>詳細を確認する</span>
           </a>
@@ -1479,6 +1503,31 @@ window.EVENT_CONFIG = {
     // フォーム送信時に使う参加方法を「対面」or「オンライン」でセット
     const joinInput = document.getElementById("joinMode-input");
     if (joinInput) joinInput.value = isOnline ? "オンライン" : "対面";
+
+    // 参加方法別CTA（対面 / Zoom）の有効・無効を切替
+    const ctaOffline = document.getElementById("cta-offline");
+    const ctaOnline  = document.getElementById("cta-online");
+    const noteOffline = document.getElementById("cta-offline-note");
+    const noteOnline  = document.getElementById("cta-online-note");
+    if (ctaOffline && ctaOnline) {
+      if (isOnline) {
+        // オンライン開催回：Zoomボタンだけ有効、対面ボタンは無効
+        ctaOffline.classList.add("cta-disabled");
+        ctaOffline.setAttribute("aria-disabled", "true");
+        ctaOnline.classList.remove("cta-disabled");
+        ctaOnline.removeAttribute("aria-disabled");
+        if (noteOffline) { noteOffline.textContent = "現在、対面開催の予定はありません"; noteOffline.classList.remove("hidden"); }
+        if (noteOnline)  { noteOnline.classList.add("hidden"); noteOnline.textContent = ""; }
+      } else {
+        // 対面開催回：対面ボタンだけ有効、Zoomボタンは無効
+        ctaOnline.classList.add("cta-disabled");
+        ctaOnline.setAttribute("aria-disabled", "true");
+        ctaOffline.classList.remove("cta-disabled");
+        ctaOffline.removeAttribute("aria-disabled");
+        if (noteOnline)  { noteOnline.textContent = "現在、オンライン開催の予定はありません"; noteOnline.classList.remove("hidden"); }
+        if (noteOffline) { noteOffline.classList.add("hidden"); noteOffline.textContent = ""; }
+      }
+    }
   }
 
   // 日付を「2026年7月23日（木）」形式に整形。整形済み・空文字・パース不能はそのまま返す
