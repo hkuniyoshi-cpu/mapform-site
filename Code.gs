@@ -36,10 +36,10 @@ const CONFIG_SHEET = "設定";
 const MASTER_SHEET = "申込一覧";
 
 // 申込一覧（累積ログ）の列 — チェックボックスなし
-const MASTER_COLS = ["申込日時","開催ID","お名前","メールアドレス","電話番号","店舗名・会社名","流入経路","ご質問・備考"];
+const MASTER_COLS = ["申込日時","開催ID","参加方法","お名前","メールアドレス","電話番号","店舗名・会社名","流入経路","ご質問・備考"];
 
 // 開催別シートの列 — A列がチェックボックス
-const EVENT_COLS  = ["✓","申込日時","開催ID","お名前","メールアドレス","電話番号","店舗名・会社名","流入経路","ご質問・備考"];
+const EVENT_COLS  = ["✓","申込日時","開催ID","参加方法","お名前","メールアドレス","電話番号","店舗名・会社名","流入経路","ご質問・備考"];
 
 // 設定シートのデフォルト値（eventIdは開催日から自動生成されるため不要）
 const DEFAULT_CONFIG = [
@@ -56,6 +56,10 @@ const DEFAULT_CONFIG = [
   ["地図リンク", "https://maps.app.goo.gl/rYUED1nsaJ7CEat17"],
   ["地図埋込URL","https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d894.865614533331!2d127.6954395!3d26.2141591!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x34e569cb16dea07d%3A0x1a20f9f3ebacd842!2z44OE44Oc44OQ44OrQ2FmZe-8hkJhcg!5e0!3m2!1sja!2sjp!4v1778600875620!5m2!1sja!2sjp"],
   ["駐車場",     "先着4台店舗前 / 近隣コインパーキングあり（有料）"],
+  ["開催形式",   "対面"],  // 対面 or オンライン（プルダウン）
+  ["オンラインURL", ""],  // Zoom等のURL（開催形式=オンラインの時に表示）
+  ["オンライン注意事項", "開催前日までにZoom URLをメールでお送りします。"],
+  ["特例告知",   ""],  // 入力されていればページ上部に告知バナーを表示（例：「今回は特例でオンライン開催です」）
   ["次々回開催日", ""],  // 予告用。本ページの申込み対象（=次回）の次の開催。空欄ならWEBで「調整中」と表示
   ["次々回テーマ", ""]   // 次々回のテーマ。空欄ならWEB上に表示されない
 ];
@@ -82,10 +86,14 @@ function doPost(e) {
     var data    = JSON.parse(e.postData.contents);
     var eventId = (data.eventId || "_unknown").toString();
     var ss      = SpreadsheetApp.getActiveSpreadsheet();
+    var config  = readConfig_(ss);
+    // 参加方法：フォーム側の送信値を優先、無ければ設定シートの開催形式を採用
+    var joinMode = (data.joinMode || config["開催形式"] || "対面").toString();
 
     var dataRow = [
       new Date(),
       eventId,
+      joinMode,
       data.name     || "",
       data.email    || "",
       data.phone    || "",
@@ -138,7 +146,7 @@ function doGet(e) {
 // 並べ替え（申込一覧対象）
 // =============================================
 function sortByDateDesc() { sortSheet_(MASTER_SHEET, 1, false); } // 申込日時
-function sortByName()     { sortSheet_(MASTER_SHEET, 3, true);  } // お名前
+function sortByName()     { sortSheet_(MASTER_SHEET, 4, true);  } // お名前（参加方法列追加でシフト）
 
 function sortSheet_(sheetName, colIndex, asc) {
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -171,17 +179,25 @@ function setupSheets() {
   configSheet.setColumnWidth(2, 500);
 
   // 「開催日」「次々回開催日」セルをカレンダー入力に設定（旧名「次回開催日」も後方互換）
+  // 「開催形式」セルにはプルダウン（対面/オンライン）を設定
   var cfgData = configSheet.getRange(2, 1, configSheet.getLastRow() - 1, 2).getValues();
   cfgData.forEach(function(row, i) {
     var k = row[0];
     var isPreviewDate = (k === "次々回開催日" || k === "次回開催日");
+    var cell = configSheet.getRange(i + 2, 2);
     if (k === "開催日" || isPreviewDate) {
-      var cell = configSheet.getRange(i + 2, 2);
       cell.setNumberFormat("yyyy/MM/dd");
-      // 開催日は必須（厳格）／次々回開催日は空欄可（予告未定→WEBで「調整中」）
       cell.setDataValidation(
         SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(isPreviewDate).build()
       );
+    } else if (k === "開催形式") {
+      cell.setDataValidation(
+        SpreadsheetApp.newDataValidation()
+          .requireValueInList(["対面", "オンライン"], true)
+          .setAllowInvalid(false)
+          .build()
+      );
+      cell.setBackground("#EAF2FE"); // 目立つ薄青
     }
   });
 
@@ -206,7 +222,18 @@ function setupSheets() {
 // 申込み完了メール
 // =============================================
 function sendConfirmationEmail_(data, ss) {
-  var config  = readConfig_(ss);
+  var config   = readConfig_(ss);
+  var isOnline = (config["開催形式"] === "オンライン");
+  var joinMode = (data.joinMode || config["開催形式"] || "対面");
+  var venueLine = isOnline
+    ? "参加形式　：オンライン（Zoom）\n" + (config["オンラインURL"] ? "URL　　　　：" + config["オンラインURL"] + "\n" : "")
+    : "参加形式　：対面\n会　場　　：" + (config["会場名"] || "") + "\n";
+  var closing = isOnline
+    ? "開催前日までにZoom URLをメールでお送りします。\n" +
+      "PC・タブレット・スマホどれでも参加可能です。\n" +
+      "Googleビジネスプロフィールにログインできる状態でご参加ください。\n"
+    : "当日はパソコンまたはタブレットをご持参ください。\n" +
+      "Googleビジネスプロフィールにログインできる状態でお越しください。\n";
   var subject = "【申込み完了】" + (config["タイトル"] || "Googleマップ診断会＋勉強会");
   var body =
     data.name + " 様\n\n" +
@@ -217,10 +244,9 @@ function sendConfirmationEmail_(data, ss) {
     "店舗名　　：" + (data.shopName || "（未入力）") + "\n" +
     "開催日　　：" + (config["開催日"]   || "") + "\n" +
     "時　間　　：" + (config["開催時間"] || "") + "\n" +
-    "会　場　　：" + (config["会場名"]   || "") + "\n" +
+    venueLine +
     "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
-    "当日はパソコンまたはタブレットをご持参ください。\n" +
-    "Googleビジネスプロフィールにログインできる状態でお越しください。\n\n" +
+    closing + "\n" +
     "開催3日前にリマインドメールをお送りします。\n\n" +
     SENDER_EMAIL + "\n" + SENDER_NAME + "\nhttps://search-mania.net/";
 
@@ -238,6 +264,7 @@ function sendAdminNotification_(data, ss) {
     body:
       "新規申込みがありました。\n\n" +
       "━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+      "参加方法　：" + (data.joinMode || config["開催形式"] || "対面") + "\n" +
       "お名前　　：" + (data.name     || "") + "\n" +
       "メール　　：" + (data.email    || "") + "\n" +
       "電話番号　：" + (data.phone    || "") + "\n" +
@@ -274,8 +301,8 @@ function sendReminders() {
   var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, EVENT_COLS.length).getValues();
   rows.forEach(function(row) {
     if (row[0] !== true) return;
-    var email = row[4]; // メールアドレス（E列）
-    var name  = row[3]; // お名前（D列）
+    var email = row[5]; // メールアドレス（F列）※参加方法列追加で1つ右にシフト
+    var name  = row[4]; // お名前（E列）
     if (!email) return;
     sendReminderEmail_(name, email, config);
   });
@@ -352,9 +379,9 @@ function countChecked_(ss, eventId) {
   return rows.filter(function(r) { return r[0] === true; }).length;
 }
 
-// お名前列（D列 = 4列目）が空の最初の行を返す
+// お名前列（E列 = 5列目）が空の最初の行を返す
 function nextDataRow_(sheet) {
-  var nameCol = 4; // D列（✓=A, 申込日時=B, 開催ID=C, お名前=D）
+  var nameCol = 5; // E列（✓=A, 申込日時=B, 開催ID=C, 参加方法=D, お名前=E）
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return 2;
   var values = sheet.getRange(2, nameCol, lastRow - 1, 1).getValues();
@@ -418,12 +445,13 @@ function setupMasterSheet_(sheet) {
   sheet.setFrozenRows(1);
   sheet.setColumnWidth(1, 160); // 申込日時
   sheet.setColumnWidth(2, 160); // 開催ID
-  sheet.setColumnWidth(3, 120); // お名前
-  sheet.setColumnWidth(4, 200); // メール
-  sheet.setColumnWidth(5, 130); // 電話
-  sheet.setColumnWidth(6, 160); // 店舗名
-  sheet.setColumnWidth(7, 160); // 流入経路
-  sheet.setColumnWidth(8, 200); // 備考
+  sheet.setColumnWidth(3, 90);  // 参加方法
+  sheet.setColumnWidth(4, 120); // お名前
+  sheet.setColumnWidth(5, 200); // メール
+  sheet.setColumnWidth(6, 130); // 電話
+  sheet.setColumnWidth(7, 160); // 店舗名
+  sheet.setColumnWidth(8, 160); // 流入経路
+  sheet.setColumnWidth(9, 200); // 備考
 }
 
 // 開催別シートのセットアップ（チェックボックスあり）
@@ -437,12 +465,13 @@ function setupEventSheet_(sheet) {
   sheet.setColumnWidth(1, 40);  // ✓
   sheet.setColumnWidth(2, 160); // 申込日時
   sheet.setColumnWidth(3, 160); // 開催ID
-  sheet.setColumnWidth(4, 120); // お名前
-  sheet.setColumnWidth(5, 200); // メール
-  sheet.setColumnWidth(6, 130); // 電話
-  sheet.setColumnWidth(7, 160); // 店舗名
-  sheet.setColumnWidth(8, 160); // 流入経路
-  sheet.setColumnWidth(9, 200); // 備考
+  sheet.setColumnWidth(4, 90);  // 参加方法
+  sheet.setColumnWidth(5, 120); // お名前
+  sheet.setColumnWidth(6, 200); // メール
+  sheet.setColumnWidth(7, 130); // 電話
+  sheet.setColumnWidth(8, 160); // 店舗名
+  sheet.setColumnWidth(9, 160); // 流入経路
+  sheet.setColumnWidth(10, 200); // 備考
 }
 
 function jsonOut_(obj) {

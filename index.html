@@ -567,6 +567,16 @@ window.EVENT_CONFIG = {
 
 <!-- ====================== HERO ====================== -->
 <section id="top" class="relative min-h-[100svh] flex items-center pt-28 pb-20 overflow-hidden hero-bg">
+  <!-- 特例告知バナー（開催形式などの特別なお知らせ・値があれば表示） -->
+  <div id="special-notice" class="hidden" style="position:absolute; top:70px; left:0; right:0; z-index:15;">
+    <div style="background:linear-gradient(90deg,#EA4335,#FBBC05); color:#fff; padding:12px 16px; box-shadow:0 4px 14px rgba(0,0,0,.12);">
+      <div class="max-w-7xl mx-auto flex items-center justify-center gap-2 flex-wrap text-sm sm:text-base font-bold text-center">
+        <i data-lucide="megaphone" class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"></i>
+        <span id="special-notice-text"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- Floating orbs -->
   <div class="orb" style="width:560px;height:560px;background:#4285F4;top:-160px;left:-120px;animation:float-orb 10s ease-in-out infinite;"></div>
   <div class="orb" style="width:500px;height:500px;background:#34A853;bottom:-160px;right:-100px;animation:float-orb-2 12s ease-in-out infinite;"></div>
@@ -585,11 +595,11 @@ window.EVENT_CONFIG = {
             <div class="g-dot" style="background:#34A853"></div>
             <span class="font-mono text-xs ml-2" style="color:var(--fg-mute); letter-spacing:.1em;">MEO WORKSHOP</span>
           </div>
-          <!-- 対面開催バッジ -->
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+          <!-- 開催形式バッジ（対面 or オンライン）— JSで切替 -->
+          <span id="format-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
                 style="background:#EAF2FE; color:#4285F4; border:1px solid #C5D9FC;">
-            <i data-lucide="users" class="w-3.5 h-3.5"></i>
-            会場で対面開催
+            <i id="format-badge-icon" data-lucide="users" class="w-3.5 h-3.5"></i>
+            <span id="format-badge-text">会場で対面開催</span>
           </span>
         </div>
 
@@ -833,8 +843,8 @@ window.EVENT_CONFIG = {
         <div class="text-sm" style="color:var(--fg-mute);"><span id="detail-dur">—</span>　/　参加費 <span id="detail-fee">—</span></div>
       </div>
 
-      <!-- venue -->
-      <div class="card p-7 lg:col-span-2" data-anim="up">
+      <!-- venue: offline（対面） -->
+      <div id="venue-offline" class="card p-7 lg:col-span-2" data-anim="up">
         <div class="flex items-center gap-3 mb-5">
           <div class="w-10 h-10 rounded-full grid place-items-center" style="background:#E6F4EA;">
             <i data-lucide="map-pin" class="w-5 h-5" style="color:#34A853;"></i>
@@ -864,10 +874,43 @@ window.EVENT_CONFIG = {
           </div>
         </div>
       </div>
+
+      <!-- venue: online（オンライン開催・設定シート「開催形式」= オンライン の時のみ表示） -->
+      <div id="venue-online" class="hidden card p-7 lg:col-span-2" data-anim="up">
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-10 h-10 rounded-full grid place-items-center" style="background:#EAF2FE;">
+            <i data-lucide="video" class="w-5 h-5" style="color:#4285F4;"></i>
+          </div>
+          <div class="font-mono text-[10px] tracking-widest" style="color:var(--fg-mute);">ONLINE（オンライン開催）</div>
+          <span class="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold"
+                style="background:#EAF2FE; color:#4285F4; border:1px solid #C5D9FC;">
+            <i data-lucide="video" class="w-3 h-3"></i>
+            オンライン参加
+          </span>
+        </div>
+        <div class="space-y-5">
+          <div>
+            <div class="font-display text-xl font-semibold mb-2">オンライン開催</div>
+            <p class="text-sm leading-relaxed" style="color:var(--fg-dim);">
+              ご自宅・お店から、パソコン／タブレット／スマートフォンでご参加いただけます。<br>
+              Zoom を使用します（アプリのインストールは不要です）。
+            </p>
+          </div>
+          <div id="online-url-wrap" class="hidden">
+            <div class="font-mono text-[10px] tracking-widest mb-1" style="color:var(--fg-mute);">MEETING URL</div>
+            <a id="online-url" href="#" target="_blank" rel="noopener"
+               class="text-sm font-medium break-all" style="color:var(--accent);"></a>
+          </div>
+          <div>
+            <div class="font-mono text-[10px] tracking-widest mb-1" style="color:var(--fg-mute);">案内</div>
+            <p class="text-sm leading-relaxed" style="color:var(--fg-dim);" id="online-notes">開催前日までにZoom URLをメールでお送りします。</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Google Maps embed -->
-    <div class="mt-8" data-anim="up">
+    <!-- Google Maps embed（対面時のみ） -->
+    <div id="map-wrap-outer" class="mt-8" data-anim="up">
       <div class="map-wrap" style="box-shadow:0 4px 20px rgba(0,0,0,.1);">
         <iframe id="map-iframe" src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d894.865614533331!2d127.6954395!3d26.2141591!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x34e569cb16dea07d%3A0x1a20f9f3ebacd842!2z44OE44Oc44OQ44OrQ2FmZe-8hkJhcg!5e0!3m2!1sja!2sjp!4v1778600875620!5m2!1sja!2sjp"
                 allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
@@ -1023,6 +1066,8 @@ window.EVENT_CONFIG = {
     </div>
 
     <form id="apply-form" class="card p-7 md:p-10 space-y-5" novalidate>
+      <!-- 参加方法：開催形式に応じて自動セット（対面 / オンライン） -->
+      <input type="hidden" name="joinMode" id="joinMode-input" value="対面" />
 
       <div class="grid sm:grid-cols-2 gap-5">
         <div>
@@ -1325,6 +1370,63 @@ window.EVENT_CONFIG = {
   // フェイルセーフ：GAS応答が無くても5秒で必ず非表示にする
   const loaderFailsafe = setTimeout(hidePageLoader, 5000);
 
+  // 開催形式（対面/オンライン）に応じてDOMを切り替え
+  function applyEventFormat(format, c) {
+    const isOnline = (format === "オンライン");
+
+    // ヒーローのバッジ
+    const badge     = document.getElementById("format-badge");
+    const badgeText = document.getElementById("format-badge-text");
+    const badgeIcon = document.getElementById("format-badge-icon");
+    if (badge && badgeText) {
+      if (isOnline) {
+        badgeText.textContent = "オンライン開催（Zoom）";
+        badge.style.background = "#EAF2FE";
+        badge.style.color = "#4285F4";
+        badge.style.borderColor = "#C5D9FC";
+        if (badgeIcon) badgeIcon.setAttribute("data-lucide", "video");
+      } else {
+        badgeText.textContent = "会場で対面開催";
+        badge.style.background = "#FEF2F0";
+        badge.style.color = "#EA4335";
+        badge.style.borderColor = "#F8D2CC";
+        if (badgeIcon) badgeIcon.setAttribute("data-lucide", "map-pin");
+      }
+      // lucide再描画（アイコン差し替えのため）
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // VENUE ブロックの切替
+    const venueOffline = document.getElementById("venue-offline");
+    const venueOnline  = document.getElementById("venue-online");
+    const mapWrap      = document.getElementById("map-wrap-outer");
+    if (isOnline) {
+      venueOffline && venueOffline.classList.add("hidden");
+      mapWrap && mapWrap.classList.add("hidden");
+      venueOnline && venueOnline.classList.remove("hidden");
+
+      // オンラインURL・注意事項をセット
+      const url = (c["オンラインURL"] || "").toString().trim();
+      const wrap = document.getElementById("online-url-wrap");
+      const link = document.getElementById("online-url");
+      if (url && wrap && link) {
+        link.href = url; link.textContent = url;
+        wrap.classList.remove("hidden");
+      }
+      const notes = (c["オンライン注意事項"] || "").toString().trim();
+      const notesEl = document.getElementById("online-notes");
+      if (notes && notesEl) notesEl.textContent = notes;
+    } else {
+      venueOnline && venueOnline.classList.add("hidden");
+      venueOffline && venueOffline.classList.remove("hidden");
+      mapWrap && mapWrap.classList.remove("hidden");
+    }
+
+    // フォーム送信時に使う参加方法を「対面」or「オンライン」でセット
+    const joinInput = document.getElementById("joinMode-input");
+    if (joinInput) joinInput.value = isOnline ? "オンライン" : "対面";
+  }
+
   // 日付を「2026年7月23日（木）」形式に整形。整形済み・空文字・パース不能はそのまま返す
   function formatToJaDate(input) {
     if (!input) return "";
@@ -1418,6 +1520,21 @@ window.EVENT_CONFIG = {
       if (nextTheme) {
         document.querySelectorAll(".next-event-theme").forEach(el => { el.textContent = nextTheme; });
         document.querySelectorAll(".next-event-theme-row").forEach(el => el.classList.remove("hidden"));
+      }
+
+      // 開催形式（対面 or オンライン）— DOM切替
+      const format = (c["開催形式"] || "対面").toString().trim();
+      applyEventFormat(format, c);
+
+      // 特例告知（値があれば赤バナー表示）
+      const notice = (c["特例告知"] || "").toString().trim();
+      if (notice) {
+        const noticeEl = document.getElementById("special-notice");
+        const noticeText = document.getElementById("special-notice-text");
+        if (noticeEl && noticeText) {
+          noticeText.textContent = notice;
+          noticeEl.classList.remove("hidden");
+        }
       }
 
       // 動的に内容が変わったのでScrollTriggerの位置を再計算（表示崩れ防止）
@@ -1715,8 +1832,10 @@ window.EVENT_CONFIG = {
     }
     setSubmitting(true);
     const sources=$$('input[name="source"]:checked').map(i=>i.value);
+    const joinModeInput = document.getElementById("joinMode-input");
     const payload={
       action:"submit", eventId:cfg.eventId, submittedAt:new Date().toISOString(),
+      joinMode: joinModeInput ? joinModeInput.value : "対面",
       name:form.name.value.trim(), email:form.email.value.trim(),
       phone:form.phone.value.trim(), shopName:form.shopName.value.trim(),
       source:sources, note:form.note.value.trim()
