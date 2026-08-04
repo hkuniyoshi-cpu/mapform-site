@@ -1,0 +1,17 @@
+# GAS に送らないファイル（フロント・ドキュメント・素材・git）
+index.html
+index/**
+gallery/**
+マップ診断会様子/**
+README.md
+*.md
+*.png
+*.jpg
+*.jpeg
+.git/**
+.gitignore
+.gitattributes
+.claspignore
+
+# クラスプ設定
+.clasp.json
