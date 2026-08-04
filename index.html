@@ -1178,6 +1178,62 @@ window.EVENT_CONFIG = {
         <textarea name="note" class="field min-h-[100px] resize-y" placeholder="気になる点があればお書きください"></textarea>
       </div>
 
+      <!-- オンライン参加時のみ表示：同意チェック ==================================== -->
+      <div id="online-consent" class="hidden rounded-xl p-5"
+           style="background:linear-gradient(135deg,rgba(66,133,244,.06),rgba(52,168,83,.06));
+                  border:1px solid rgba(66,133,244,.25);">
+        <div class="flex items-center gap-2 mb-3">
+          <i data-lucide="video" class="w-5 h-5" style="color:var(--accent);"></i>
+          <div class="text-sm font-bold" style="color:var(--fg);">オンライン参加に関する同意事項</div>
+          <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ml-auto"
+                style="background:var(--danger); color:#fff;">全て必須</span>
+        </div>
+        <div class="space-y-2.5">
+          <label class="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed cursor-pointer">
+            <input type="checkbox" name="consent" value="録画同意"
+                   class="consent-check mt-0.5 w-4 h-4 flex-shrink-0" required />
+            <span>
+              当日の講座は**録画・録音**され、参加者への振り返り資料や運営改善に使用されます。
+              画面に自分の姿が映る可能性があることに同意します。
+            </span>
+          </label>
+          <label class="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed cursor-pointer">
+            <input type="checkbox" name="consent" value="URL非共有"
+                   class="consent-check mt-0.5 w-4 h-4 flex-shrink-0" required />
+            <span>
+              事前にお送りする **Zoom URL は他者と共有しません**。他の方の参加希望はご案内ページからお申込みください。
+            </span>
+          </label>
+          <label class="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed cursor-pointer">
+            <input type="checkbox" name="consent" value="事例非転載"
+                   class="consent-check mt-0.5 w-4 h-4 flex-shrink-0" required />
+            <span>
+              講座内で共有される**他店舗の事例・改善内容・スクリーンショット等**は
+              外部SNSやブログ等に**転載しません**。
+            </span>
+          </label>
+          <label class="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed cursor-pointer">
+            <input type="checkbox" name="consent" value="通信環境自己責任"
+                   class="consent-check mt-0.5 w-4 h-4 flex-shrink-0" required />
+            <span>
+              **通信環境（Wi-Fi等）は自己責任**で確保します。
+              当日つながりにくい・音声が途切れる等の際は、可能な範囲で対応いただきます。
+            </span>
+          </label>
+          <label class="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed cursor-pointer">
+            <input type="checkbox" name="consent" value="GBPログイン準備"
+                   class="consent-check mt-0.5 w-4 h-4 flex-shrink-0" required />
+            <span>
+              当日は **Googleビジネスプロフィール**にログインできる状態でご参加ください。
+              その場で診断・改善案を反映できます。
+            </span>
+          </label>
+        </div>
+        <div id="consent-error" class="hidden mt-3 text-xs font-semibold" style="color:var(--danger);">
+          ⚠ すべての項目に同意（チェック）が必要です。
+        </div>
+      </div>
+
       <div class="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <p class="text-xs leading-relaxed sm:max-w-xs" style="color:var(--fg-mute);">
           送信内容は本セミナー運営のみに使用します。第三者への提供は行いません。
@@ -1524,6 +1580,20 @@ window.EVENT_CONFIG = {
     // フォーム送信時に使う参加方法を「対面」or「オンライン」でセット
     const joinInput = document.getElementById("joinMode-input");
     if (joinInput) joinInput.value = isOnline ? "オンライン" : "対面";
+
+    // オンライン参加時の同意チェック欄の表示切替
+    const consentBlock = document.getElementById("online-consent");
+    if (consentBlock) {
+      if (isOnline) {
+        consentBlock.classList.remove("hidden");
+        // required属性を有効化
+        consentBlock.querySelectorAll(".consent-check").forEach(cb => cb.required = true);
+      } else {
+        consentBlock.classList.add("hidden");
+        // 対面時は required を外し、チェックも解除しておく
+        consentBlock.querySelectorAll(".consent-check").forEach(cb => { cb.required = false; cb.checked = false; });
+      }
+    }
 
     // 参加方法別CTA（対面 / Zoom）の有効・無効を切替
     const ctaOffline = document.getElementById("cta-offline");
@@ -1967,12 +2037,32 @@ window.EVENT_CONFIG = {
       if(first&&window.gsap) gsap.fromTo(first,{x:-6},{x:0,duration:.4,ease:"elastic.out(1,.4)"});
       return;
     }
+
+    // オンライン参加時：同意チェックが全部入っているかバリデーション
+    const joinModeInput = document.getElementById("joinMode-input");
+    const isOnlineJoin = joinModeInput && joinModeInput.value === "オンライン";
+    const consentBlock = document.getElementById("online-consent");
+    const consentError = document.getElementById("consent-error");
+    const consentChecks = consentBlock ? consentBlock.querySelectorAll(".consent-check") : [];
+    const consentValues = [];
+    if (isOnlineJoin && consentChecks.length) {
+      let allChecked = true;
+      consentChecks.forEach(cb => { if (cb.checked) consentValues.push(cb.value); else allChecked = false; });
+      if (!allChecked) {
+        if (consentError) consentError.classList.remove("hidden");
+        consentBlock.scrollIntoView({ behavior:"smooth", block:"center" });
+        if (window.gsap) gsap.fromTo(consentBlock, {x:-6}, {x:0, duration:.4, ease:"elastic.out(1,.4)"});
+        return;
+      }
+      if (consentError) consentError.classList.add("hidden");
+    }
+
     setSubmitting(true);
     const sources=$$('input[name="source"]:checked').map(i=>i.value);
-    const joinModeInput = document.getElementById("joinMode-input");
     const payload={
       action:"submit", eventId:cfg.eventId, submittedAt:new Date().toISOString(),
       joinMode: joinModeInput ? joinModeInput.value : "対面",
+      consent: consentValues.join(", "),
       name:form.name.value.trim(), email:form.email.value.trim(),
       phone:form.phone.value.trim(), shopName:form.shopName.value.trim(),
       source:sources, note:form.note.value.trim()

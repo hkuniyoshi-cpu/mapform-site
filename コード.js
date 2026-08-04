@@ -36,10 +36,10 @@ const CONFIG_SHEET = "設定";
 const MASTER_SHEET = "申込一覧";
 
 // 申込一覧（累積ログ）の列 — チェックボックスなし
-const MASTER_COLS = ["申込日時","開催ID","参加方法","お名前","メールアドレス","電話番号","店舗名・会社名","流入経路","ご質問・備考"];
+const MASTER_COLS = ["申込日時","開催ID","参加方法","お名前","メールアドレス","電話番号","店舗名・会社名","流入経路","ご質問・備考","同意項目"];
 
 // 開催別シートの列 — A列がチェックボックス
-const EVENT_COLS  = ["✓","申込日時","開催ID","参加方法","お名前","メールアドレス","電話番号","店舗名・会社名","流入経路","ご質問・備考"];
+const EVENT_COLS  = ["✓","申込日時","開催ID","参加方法","お名前","メールアドレス","電話番号","店舗名・会社名","流入経路","ご質問・備考","同意項目"];
 
 // 設定シートのデフォルト値（eventIdは開催日から自動生成されるため不要）
 const DEFAULT_CONFIG = [
@@ -150,7 +150,9 @@ function doPost(e) {
       data.phone    || "",
       data.shopName || "",
       Array.isArray(data.source) ? data.source.join(", ") : (data.source || ""),
-      data.note     || ""
+      data.note     || "",
+      // 同意項目（オンライン参加時に画面でチェックされた同意事項を "録画同意, URL非共有, ..." 形式で保存）
+      Array.isArray(data.consent) ? data.consent.join(", ") : (data.consent || "")
     ];
 
     // 申込一覧：累積ログ（チェックなし・シンプル追記）
@@ -503,6 +505,7 @@ function setupMasterSheet_(sheet) {
   sheet.setColumnWidth(7, 160); // 店舗名
   sheet.setColumnWidth(8, 160); // 流入経路
   sheet.setColumnWidth(9, 200); // 備考
+  sheet.setColumnWidth(10, 240); // 同意項目（オンライン参加時のみ埋まる）
 }
 
 // 開催別シートのセットアップ（チェックボックスあり）
@@ -523,6 +526,7 @@ function setupEventSheet_(sheet) {
   sheet.setColumnWidth(8, 160); // 店舗名
   sheet.setColumnWidth(9, 160); // 流入経路
   sheet.setColumnWidth(10, 200); // 備考
+  sheet.setColumnWidth(11, 240); // 同意項目（オンライン参加時のみ埋まる）
 }
 
 function jsonOut_(obj) {
