@@ -342,6 +342,49 @@ window.EVENT_CONFIG = {
     font-size:12px; color:var(--fg-dim);
   }
 
+  /* ===== オンライン参加の同意チェック（視認性重視レイアウト） ===== */
+  .consent-item{
+    display:flex; align-items:flex-start; gap:12px;
+    padding:10px 12px;
+    background:#ffffff;
+    border:1px solid rgba(66,133,244,.15);
+    border-radius:10px;
+    cursor:pointer;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .1s ease;
+  }
+  .consent-item:hover{
+    border-color:rgba(66,133,244,.4);
+    box-shadow:0 2px 8px rgba(66,133,244,.08);
+  }
+  .consent-item:has(.consent-check:checked){
+    border-color:rgba(52,168,83,.55);
+    background:linear-gradient(180deg, #ffffff, rgba(52,168,83,.04));
+  }
+  .consent-check{
+    width:20px; height:20px;
+    margin-top:2px;
+    flex-shrink:0;
+    accent-color:#4285F4;
+    cursor:pointer;
+  }
+  .consent-body{ flex:1; min-width:0; }
+  .consent-title{
+    font-size:14px; font-weight:700;
+    color:var(--fg); line-height:1.5;
+  }
+  .consent-desc{
+    font-size:12px; margin-top:4px;
+    color:var(--fg-mute); line-height:1.55;
+  }
+  .consent-kw{
+    color:#4285F4; font-weight:800;
+  }
+  @media (max-width:640px){
+    .consent-item{ padding:12px; gap:10px; }
+    .consent-title{ font-size:13px; }
+    .consent-desc{ font-size:11.5px; }
+  }
+
   /* ===== 参加方法CTAの無効状態（対面／オンラインどちらかが不可の時） ===== */
   .cta-disabled{
     background:#E8EAED !important;
@@ -1182,54 +1225,57 @@ window.EVENT_CONFIG = {
       <div id="online-consent" class="hidden rounded-xl p-5"
            style="background:linear-gradient(135deg,rgba(66,133,244,.06),rgba(52,168,83,.06));
                   border:1px solid rgba(66,133,244,.25);">
-        <div class="flex items-center gap-2 mb-3">
+        <div class="flex items-center gap-2 mb-4">
           <i data-lucide="video" class="w-5 h-5" style="color:var(--accent);"></i>
           <div class="text-sm font-bold" style="color:var(--fg);">オンライン参加に関する同意事項</div>
-          <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ml-auto"
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto"
                 style="background:var(--danger); color:#fff;">全て必須</span>
         </div>
-        <div class="space-y-2.5">
-          <label class="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed cursor-pointer">
-            <input type="checkbox" name="consent" value="録画同意"
-                   class="consent-check mt-0.5 w-4 h-4 flex-shrink-0" required />
-            <span>
-              当日の講座は**録画・録音**され、参加者への振り返り資料や運営改善に使用されます。
-              画面に自分の姿が映る可能性があることに同意します。
-            </span>
+
+        <div class="space-y-2">
+          <!-- 各項目：太字タイトル + キーワード色付け + グレーの補足 -->
+          <label class="consent-item">
+            <input type="checkbox" name="consent" value="録画同意" class="consent-check" required />
+            <div class="consent-body">
+              <div class="consent-title">当日の講座は <span class="consent-kw">録画・録音</span> されます</div>
+              <div class="consent-desc">振り返り資料・運営改善に使用。画面に自分の姿が映る可能性があります。</div>
+            </div>
           </label>
-          <label class="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed cursor-pointer">
-            <input type="checkbox" name="consent" value="URL非共有"
-                   class="consent-check mt-0.5 w-4 h-4 flex-shrink-0" required />
-            <span>
-              事前にお送りする **Zoom URL は他者と共有しません**。他の方の参加希望はご案内ページからお申込みください。
-            </span>
+
+          <label class="consent-item">
+            <input type="checkbox" name="consent" value="URL非共有" class="consent-check" required />
+            <div class="consent-body">
+              <div class="consent-title"><span class="consent-kw">Zoom URL は他者と共有しない</span></div>
+              <div class="consent-desc">他の方の参加希望はご案内ページからお申込みください。</div>
+            </div>
           </label>
-          <label class="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed cursor-pointer">
-            <input type="checkbox" name="consent" value="事例非転載"
-                   class="consent-check mt-0.5 w-4 h-4 flex-shrink-0" required />
-            <span>
-              講座内で共有される**他店舗の事例・改善内容・スクリーンショット等**は
-              外部SNSやブログ等に**転載しません**。
-            </span>
+
+          <label class="consent-item">
+            <input type="checkbox" name="consent" value="事例非転載" class="consent-check" required />
+            <div class="consent-body">
+              <div class="consent-title">他店舗の事例・スクショを <span class="consent-kw">外部に転載しない</span></div>
+              <div class="consent-desc">SNS・ブログ等での二次利用は禁止です。</div>
+            </div>
           </label>
-          <label class="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed cursor-pointer">
-            <input type="checkbox" name="consent" value="通信環境自己責任"
-                   class="consent-check mt-0.5 w-4 h-4 flex-shrink-0" required />
-            <span>
-              **通信環境（Wi-Fi等）は自己責任**で確保します。
-              当日つながりにくい・音声が途切れる等の際は、可能な範囲で対応いただきます。
-            </span>
+
+          <label class="consent-item">
+            <input type="checkbox" name="consent" value="通信環境自己責任" class="consent-check" required />
+            <div class="consent-body">
+              <div class="consent-title">通信環境（Wi-Fi等）は <span class="consent-kw">自己責任</span> で確保</div>
+              <div class="consent-desc">つながりにくい・音声が途切れる等の際は可能な範囲で対応いただきます。</div>
+            </div>
           </label>
-          <label class="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed cursor-pointer">
-            <input type="checkbox" name="consent" value="GBPログイン準備"
-                   class="consent-check mt-0.5 w-4 h-4 flex-shrink-0" required />
-            <span>
-              当日は **Googleビジネスプロフィール**にログインできる状態でご参加ください。
-              その場で診断・改善案を反映できます。
-            </span>
+
+          <label class="consent-item">
+            <input type="checkbox" name="consent" value="GBPログイン準備" class="consent-check" required />
+            <div class="consent-body">
+              <div class="consent-title"><span class="consent-kw">Googleビジネスプロフィール</span> にログインできる状態で参加</div>
+              <div class="consent-desc">その場で診断・改善案を反映できます。</div>
+            </div>
           </label>
         </div>
-        <div id="consent-error" class="hidden mt-3 text-xs font-semibold" style="color:var(--danger);">
+
+        <div id="consent-error" class="hidden mt-3 text-xs font-bold" style="color:var(--danger);">
           ⚠ すべての項目に同意（チェック）が必要です。
         </div>
       </div>
