@@ -353,6 +353,14 @@ window.EVENT_CONFIG = {
   }
   .cta-disabled::before{ display:none !important; }
 
+  /* ===== 残席カード内「形式/定員/参加費」3分割ステータス =====
+     長めの値（例：オンライン開催）が中央で改行するのを防止 */
+  #seats-format-text, #seats-format-text + *{
+    white-space:nowrap;
+    font-size:13px !important;
+    letter-spacing:-0.03em;
+  }
+
   /* ===== オンライン開催時のバッジ強調（パルス光） ===== */
   .badge-pulse{
     animation: badge-glow 2.2s ease-in-out infinite;
@@ -371,10 +379,23 @@ window.EVENT_CONFIG = {
     white-space:nowrap;
   }
   /* ファクトボックス（ヒーロー下 DATE/TIME/FEE/DURATION）：
-     nowrap時にボックスから溢れないよう文字サイズを常時抑制 */
+     max-w-2xl で親幅が固定されるため、viewportではなく箱幅に合わせる。
+     全画面幅で「2026年8月27日（木）」が確実に収まるよう固定13pxを基準。 */
   #fact-date, #fact-time, #fact-fee, #fact-dur{
-    font-size: clamp(13px, 1.4vw, 18px) !important;
+    font-size: 13px !important;
     line-height:1.3 !important;
+    letter-spacing:-0.03em;
+  }
+  /* モバイル2列レイアウト（〜640px）は各箱が広いので14px */
+  @media (max-width:640px){
+    #fact-date, #fact-time, #fact-fee, #fact-dur{
+      font-size: 14px !important;
+    }
+  }
+  /* ヒーロー下ファクトカード：パディング詰め & 中身がボックス幅で収まるように */
+  .hero-title ~ .grid.grid-cols-2 > div{
+    padding:12px !important;
+    min-width:0;
   }
 
   /* ===== ヘッダー（全モバイル：Xiaomi/Pixel/iPhone等の中〜大幅対応） ===== */
