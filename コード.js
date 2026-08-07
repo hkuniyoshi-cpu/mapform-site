@@ -76,7 +76,70 @@ function onOpen() {
     .addItem("⚡ 設定シートを最新化（既存データ保持）", "upgradeConfigSheet")
     .addItem("🔧 初期セットアップ（初回のみ・既存データ消去）", "setupSheets")
     .addItem("⏰ リマインドトリガー設定",        "setupReminderTrigger")
+    .addSeparator()
+    .addItem("📧 送信元エイリアスをチェック", "checkSenderAlias")
+    .addItem("📧 テストメール送信（自分宛）", "sendTestEmail")
     .addToUi();
+}
+
+// =============================================
+// 送信元エイリアス診断
+// GAS の MailApp は from= に指定したメールが Gmail のエイリアスとして
+// 登録されていないと、送信アカウント本体のアドレスに勝手にフォールバックする。
+// ここで「登録済みかどうか」をUIに表示する。
+// =============================================
+function checkSenderAlias() {
+  var ui = SpreadsheetApp.getUi();
+  var aliases = [];
+  try {
+    aliases = GmailApp.getAliases() || [];
+  } catch (err) {
+    ui.alert("エイリアスを取得できませんでした：\n" + err.toString() +
+             "\n\n『権限が必要です』と出た場合は認可してから再実行してください。");
+    return;
+  }
+  var primary = Session.getActiveUser().getEmail();
+  var msg = "■ 送信アカウント（実体）\n" + primary + "\n\n";
+  msg += "■ 登録済みエイリアス\n";
+  msg += (aliases.length ? aliases.map(function(a){ return "・" + a; }).join("\n") : "（未登録）");
+  msg += "\n\n■ Code.gs の SENDER_EMAIL\n" + SENDER_EMAIL + "\n\n";
+  if (aliases.indexOf(SENDER_EMAIL) !== -1) {
+    msg += "✅ OK：SENDER_EMAIL がエイリアスに含まれています。\n" +
+           "メールは " + SENDER_EMAIL + " から送信されます。";
+  } else {
+    msg += "⚠️ 未登録：\n" +
+           SENDER_EMAIL + " が上のエイリアス一覧にありません。\n" +
+           "Gmail → 設定 → アカウント → 名前 → 「他のメールアドレスを追加」で\n" +
+           SENDER_EMAIL + " を追加してください。\n" +
+           "（登録するまでは送信アカウント本体 " + primary + " から送られます）";
+  }
+  ui.alert(msg);
+}
+
+// =============================================
+// テストメール送信（自分宛）
+// SENDER_EMAIL が正しく反映されるか実際に送って確認するための便宜関数
+// =============================================
+function sendTestEmail() {
+  var ui = SpreadsheetApp.getUi();
+  try {
+    MailApp.sendEmail({
+      to: ADMIN_EMAIL,
+      subject: "【テスト送信】SENDER_EMAIL 確認",
+      body:
+        "これはテストメールです。\n\n" +
+        "SENDER_EMAIL: " + SENDER_EMAIL + "\n" +
+        "SENDER_NAME:  " + SENDER_NAME + "\n\n" +
+        "受信メールの「From」欄が上記どおりか確認してください。\n" +
+        "違うアドレスから届いていたら、エイリアス未登録です。",
+      name: SENDER_NAME,
+      from: SENDER_EMAIL
+    });
+    ui.alert("✅ " + ADMIN_EMAIL + " 宛にテストメールを送信しました。\n" +
+             "受信箱の From を確認してください。");
+  } catch (err) {
+    ui.alert("送信失敗：" + err.toString());
+  }
 }
 
 // =============================================
