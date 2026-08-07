@@ -278,15 +278,46 @@ function sendConfirmationEmail_(data, ss) {
   var config   = readConfig_(ss);
   var isOnline = (config["開催形式"] === "オンライン");
   var joinMode = (data.joinMode || config["開催形式"] || "対面");
+
+  // Zoom情報を URL から抽出（ミーティングIDを 3 桁ずつ整形して読みやすく）
+  var zoomUrl = (config["オンラインURL"] || "").toString().trim();
+  var zoomId = "";
+  if (isOnline && zoomUrl) {
+    var m = zoomUrl.match(/\/j\/(\d+)/);
+    if (m) {
+      var raw = m[1];
+      // 10桁以上なら「XXX XXX XXXX」形式、それ以外はそのまま
+      if (raw.length >= 10) zoomId = raw.substring(0,3) + " " + raw.substring(3,6) + " " + raw.substring(6);
+      else if (raw.length >= 9) zoomId = raw.substring(0,3) + " " + raw.substring(3,6) + " " + raw.substring(6);
+      else zoomId = raw;
+    }
+  }
+
   var venueLine = isOnline
-    ? "参加形式　：オンライン（Zoom）\n" + (config["オンラインURL"] ? "URL　　　　：" + config["オンラインURL"] + "\n" : "")
+    ? "参加形式　：オンライン（Zoom）\n" +
+      (zoomUrl ? "参加URL　　：" + zoomUrl + "\n" : "") +
+      (zoomId  ? "ミーティングID：" + zoomId + "\n" : "")
     : "参加形式　：対面\n会　場　　：" + (config["会場名"] || "") + "\n";
+
   var closing = isOnline
-    ? "開催前日までにZoom URLをメールでお送りします。\n" +
-      "PC・タブレット・スマホどれでも参加可能です。\n" +
-      "Googleビジネスプロフィールにログインできる状態でご参加ください。\n"
+    ? "■ 参加方法\n" +
+      "上記の【参加URL】をクリック、または Zoom アプリで【ミーティングID】を入力してご参加ください。\n" +
+      "PC・タブレット・スマホどれでも参加可能です。\n\n" +
+      "■ ご準備のお願い\n" +
+      "Googleビジネスプロフィールにログインできる状態でご参加いただくと、その場で診断・改善を反映できます。\n" +
+      "（未登録の方も参加OKです。当日ご一緒に登録もできます）\n"
     : "当日はパソコンまたはタブレットをご持参ください。\n" +
       "Googleビジネスプロフィールにログインできる状態でお越しください。\n";
+
+  var deliverabilityNote =
+    "━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+    "■ このメールが届いた場合の確認\n" +
+    "本メールが受信できていれば、お申込みは正常に完了しています。\n" +
+    "もし今後の案内メール（リマインド等）が届かない場合は、以下をご確認ください：\n" +
+    "・迷惑メールフォルダに振り分けられていないか\n" +
+    "・info@search-mania.net をアドレス帳／許可リストに追加\n" +
+    "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+
   var subject = "【申込み完了】" + (config["タイトル"] || "Googleマップ診断会＋勉強会");
   var body =
     data.name + " 様\n\n" +
@@ -301,6 +332,7 @@ function sendConfirmationEmail_(data, ss) {
     "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
     closing + "\n" +
     "開催3日前にリマインドメールをお送りします。\n\n" +
+    deliverabilityNote +
     SENDER_EMAIL + "\n" + SENDER_NAME + "\nhttps://search-mania.net/";
 
   MailApp.sendEmail({ to: data.email, subject: subject, body: body, name: SENDER_NAME, from: SENDER_EMAIL });
@@ -362,19 +394,45 @@ function sendReminders() {
 }
 
 function sendReminderEmail_(name, email, config) {
+  var isOnline = (config["開催形式"] === "オンライン");
   var subject = "【開催3日前】" + (config["タイトル"] || "Googleマップ診断会＋勉強会") + "のご案内";
+
+  // Zoom URL からミーティングIDを抽出（3桁ずつ整形）
+  var zoomUrl = (config["オンラインURL"] || "").toString().trim();
+  var zoomId = "";
+  if (isOnline && zoomUrl) {
+    var m = zoomUrl.match(/\/j\/(\d+)/);
+    if (m) {
+      var raw = m[1];
+      if (raw.length >= 9) zoomId = raw.substring(0,3) + " " + raw.substring(3,6) + " " + raw.substring(6);
+      else zoomId = raw;
+    }
+  }
+
+  var venueBlock = isOnline
+    ? "参加形式：オンライン（Zoom）\n" +
+      (zoomUrl ? "参加URL　：" + zoomUrl + "\n" : "") +
+      (zoomId  ? "ミーティングID：" + zoomId + "\n" : "")
+    : "会　場　：" + (config["会場名"]   || "") + "\n" +
+      "住　所　：" + (config["会場住所"] || "") + "\n" +
+      (config["地図リンク"] ? "地　図　：" + config["地図リンク"] + "\n" : "");
+
+  var reminderTips = isOnline
+    ? "・PC・タブレット・スマホどれでも参加OK（Zoom アプリ推奨・ブラウザ参加可）\n" +
+      "・通信環境（Wi-Fi等）は当日ご確認ください\n" +
+      "・Googleビジネスプロフィール（登録済みの方）にログインできる状態でご参加いただくと、その場で診断・改善を反映できます\n"
+    : "・パソコン、タブレット、またはスマートフォンをご持参ください\n" +
+      "・Googleビジネスプロフィールにログインできる状態でお越しください\n";
+
   var body =
     name + " 様\n\n" +
     "いよいよ開催まであと3日となりました！\n\n" +
     "━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
     "開催日　：" + (config["開催日"]   || "") + "\n" +
     "時　間　：" + (config["開催時間"] || "") + "\n" +
-    "会　場　：" + (config["会場名"]   || "") + "\n" +
-    "住　所　：" + (config["会場住所"] || "") + "\n" +
-    (config["地図リンク"] ? "地　図　：" + config["地図リンク"] + "\n" : "") +
+    venueBlock +
     "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
-    "・パソコン、タブレット、またはスマートフォンをご持参ください\n" +
-    "・Googleビジネスプロフィールにログインできる状態でお越しください\n\n" +
+    reminderTips + "\n" +
     SENDER_EMAIL + "\n" + SENDER_NAME + "\nhttps://search-mania.net/";
 
   MailApp.sendEmail({ to: email, subject: subject, body: body, name: SENDER_NAME, from: SENDER_EMAIL });

@@ -998,14 +998,20 @@ window.EVENT_CONFIG = {
               Zoom を使用します（アプリのインストールは不要です）。
             </p>
           </div>
-          <div id="online-url-wrap" class="hidden">
-            <div class="font-mono text-[10px] tracking-widest mb-1" style="color:var(--fg-mute);">MEETING URL</div>
-            <a id="online-url" href="#" target="_blank" rel="noopener"
-               class="text-sm font-medium break-all" style="color:var(--accent);"></a>
-          </div>
           <div>
-            <div class="font-mono text-[10px] tracking-widest mb-1" style="color:var(--fg-mute);">案内</div>
-            <p class="text-sm leading-relaxed" style="color:var(--fg-dim);" id="online-notes">開催前日までにZoom URLをメールでお送りします。</p>
+            <div class="font-mono text-[10px] tracking-widest mb-2" style="color:var(--fg-mute);">参加方法</div>
+            <p class="text-sm leading-relaxed mb-3" style="color:var(--fg);" id="online-notes">
+              お申込み完了後、<strong>ご登録のメールアドレス宛にZoomのミーティングURL・IDをお送りします。</strong>
+            </p>
+            <div class="rounded-lg p-3 flex items-start gap-2 text-xs leading-relaxed"
+                 style="background:#FFF8E1; border:1px solid #F8D2CC; color:#5F6368;">
+              <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5" style="color:#EA4335;"></i>
+              <span>
+                <strong style="color:var(--fg);">メールが届かない場合</strong>：
+                迷惑メールフォルダをご確認いただくか、ご入力のメールアドレスに誤りがないかご確認ください。
+                届かない場合は再度お申し込みをお願いします。
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -1225,11 +1231,11 @@ window.EVENT_CONFIG = {
       <div id="online-consent" class="hidden rounded-xl p-5"
            style="background:linear-gradient(135deg,rgba(66,133,244,.06),rgba(52,168,83,.06));
                   border:1px solid rgba(66,133,244,.25);">
-        <div class="flex items-center gap-2 mb-4">
+        <div class="flex items-center gap-2 mb-4 flex-wrap">
           <i data-lucide="video" class="w-5 h-5" style="color:var(--accent);"></i>
           <div class="text-sm font-bold" style="color:var(--fg);">オンライン参加に関する同意事項</div>
           <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto"
-                style="background:var(--danger); color:#fff;">全て必須</span>
+                style="background:var(--danger); color:#fff;">必須4 + 任意1</span>
         </div>
 
         <div class="space-y-2">
@@ -1267,10 +1273,16 @@ window.EVENT_CONFIG = {
           </label>
 
           <label class="consent-item">
-            <input type="checkbox" name="consent" value="GBPログイン準備" class="consent-check" required />
+            <input type="checkbox" name="consent" value="GBPログイン準備" class="consent-check" data-optional="true" />
             <div class="consent-body">
-              <div class="consent-title"><span class="consent-kw">Googleビジネスプロフィール</span> にログインできる状態で参加</div>
-              <div class="consent-desc">その場で診断・改善案を反映できます。</div>
+              <div class="consent-title flex items-center gap-2 flex-wrap">
+                <span><span class="consent-kw">Googleビジネスプロフィール</span> にログインできる状態で参加</span>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:#EAF2FE;color:#4285F4;">任意・推奨</span>
+              </div>
+              <div class="consent-desc">
+                未登録の方も参加OK（当日その場で新規登録も可能です）。
+                ログイン済みだと診断・改善案をその場で反映できます。
+              </div>
             </div>
           </label>
         </div>
@@ -1499,9 +1511,19 @@ window.EVENT_CONFIG = {
         </svg>
       </div>
       <h3 class="font-display text-2xl font-bold mb-2">申込みありがとうございました</h3>
-      <p class="text-sm leading-relaxed mb-6" style="color:var(--fg-dim);">
-        受付完了のご連絡を、ご登録のメールアドレス宛にお送りします。<br>当日のご参加を心よりお待ちしております。
+      <p class="text-sm leading-relaxed mb-4" style="color:var(--fg-dim);">
+        ご登録のメールアドレス宛に受付完了のご連絡と、<br class="hidden sm:block" />
+        <strong style="color:var(--fg);">オンライン開催回は Zoom ミーティングURL・ID</strong>をお送りします。
       </p>
+      <div class="rounded-lg p-3 mb-5 flex items-start gap-2 text-left text-xs leading-relaxed"
+           style="background:#FFF8E1; border:1px solid #F8D2CC; color:#5F6368;">
+        <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5" style="color:#EA4335;"></i>
+        <span>
+          <strong style="color:var(--fg);">メールが届かない場合</strong>：
+          迷惑メールフォルダをご確認いただくか、メールアドレスに誤りが無いかご確認の上、
+          再度お申し込みをお願いします。
+        </span>
+      </div>
       <button id="thanks-close" class="btn-ghost w-full px-6 py-3 text-sm">閉じる</button>
     </div>
   </div>
@@ -1606,17 +1628,12 @@ window.EVENT_CONFIG = {
       mapWrap && mapWrap.classList.add("hidden");
       venueOnline && venueOnline.classList.remove("hidden");
 
-      // オンラインURL・注意事項をセット
-      const url = (c["オンラインURL"] || "").toString().trim();
-      const wrap = document.getElementById("online-url-wrap");
-      const link = document.getElementById("online-url");
-      if (url && wrap && link) {
-        link.href = url; link.textContent = url;
-        wrap.classList.remove("hidden");
-      }
+      // Zoom URL はセキュリティ上、公開LPには表示せず申込者にメールでのみ送付。
+      // 「オンラインURL」セルは Code.gs 側の完了メールで使用される。
+      // ページ表示テキストは「オンライン注意事項」で上書き可能。
       const notes = (c["オンライン注意事項"] || "").toString().trim();
       const notesEl = document.getElementById("online-notes");
-      if (notes && notesEl) notesEl.textContent = notes;
+      if (notes && notesEl) notesEl.innerHTML = notes;
     } else {
       venueOnline && venueOnline.classList.add("hidden");
       venueOffline && venueOffline.classList.remove("hidden");
@@ -1632,8 +1649,10 @@ window.EVENT_CONFIG = {
     if (consentBlock) {
       if (isOnline) {
         consentBlock.classList.remove("hidden");
-        // required属性を有効化
-        consentBlock.querySelectorAll(".consent-check").forEach(cb => cb.required = true);
+        // required属性を「data-required=true」の項目だけ有効化（GBPは任意なので対象外）
+        consentBlock.querySelectorAll(".consent-check").forEach(cb => {
+          if (cb.dataset.optional !== "true") cb.required = true;
+        });
       } else {
         consentBlock.classList.add("hidden");
         // 対面時は required を外し、チェックも解除しておく
@@ -2084,7 +2103,8 @@ window.EVENT_CONFIG = {
       return;
     }
 
-    // オンライン参加時：同意チェックが全部入っているかバリデーション
+    // オンライン参加時：required の同意チェックが全部入っているかバリデーション
+    // （任意チェックはチェックされていれば値を記録、未チェックでもブロックしない）
     const joinModeInput = document.getElementById("joinMode-input");
     const isOnlineJoin = joinModeInput && joinModeInput.value === "オンライン";
     const consentBlock = document.getElementById("online-consent");
@@ -2092,9 +2112,12 @@ window.EVENT_CONFIG = {
     const consentChecks = consentBlock ? consentBlock.querySelectorAll(".consent-check") : [];
     const consentValues = [];
     if (isOnlineJoin && consentChecks.length) {
-      let allChecked = true;
-      consentChecks.forEach(cb => { if (cb.checked) consentValues.push(cb.value); else allChecked = false; });
-      if (!allChecked) {
+      let requiredAllChecked = true;
+      consentChecks.forEach(cb => {
+        if (cb.checked) consentValues.push(cb.value);
+        if (cb.required && !cb.checked) requiredAllChecked = false;
+      });
+      if (!requiredAllChecked) {
         if (consentError) consentError.classList.remove("hidden");
         consentBlock.scrollIntoView({ behavior:"smooth", block:"center" });
         if (window.gsap) gsap.fromTo(consentBlock, {x:-6}, {x:0, duration:.4, ease:"elastic.out(1,.4)"});
