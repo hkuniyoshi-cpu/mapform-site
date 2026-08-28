@@ -1761,9 +1761,15 @@ window.EVENT_CONFIG = {
 
       // 次々回開催日（予告）— 未入力なら「調整中」。3箇所すべて更新
       // 新キー「次々回開催日」を優先、旧キー「次回開催日」も読む（後方互換）。
-      // GAS側で整形済みの「2026年7月23日（木）」形式が望ましいが、
-      // 生のDate文字列が来ても日本語化する（旧GASデプロイへのフォールバック）。
-      const nextStr = formatToJaDate(c["次々回開催日"] || c["次回開催日"]);
+      // ただし旧キーが【今回の開催日】と同じ値になっている場合は無視する
+      // （項目名変更前の残存データが今回開催日と同一になり、次々回として二重表示されるのを防止）。
+      const currentDateStr = formatToJaDate(c["開催日"]);
+      let nextRaw = c["次々回開催日"];
+      if (!nextRaw) {
+        const legacyStr = formatToJaDate(c["次回開催日"]);
+        if (legacyStr && legacyStr !== currentDateStr) nextRaw = c["次回開催日"];
+      }
+      const nextStr = formatToJaDate(nextRaw);
       document.querySelectorAll(".next-event-date").forEach(el => {
         el.textContent = nextStr || "調整中";
       });
