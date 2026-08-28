@@ -1183,13 +1183,48 @@ window.EVENT_CONFIG = {
       <input type="hidden" name="joinMode" id="joinMode-input" value="対面" />
 
       <div class="grid sm:grid-cols-2 gap-5">
-        <div>
+        <div class="sm:col-span-2">
           <label class="flex items-center gap-1 text-sm font-medium mb-2">
             <span>メールアドレス</span><span class="text-xs" style="color:var(--danger);">*</span>
           </label>
-          <input type="email" name="email" class="field" placeholder="you@example.com" required autocomplete="email"/>
+          <input type="email" name="email" id="email-input" class="field" placeholder="you@example.com" required autocomplete="email"/>
           <div class="text-xs mt-1.5 hidden" style="color:var(--danger);" data-err></div>
+
+          <!-- タイポ検出ヒント（もしかして○○？） -->
+          <div id="email-typo-hint" class="hidden mt-2 rounded-lg p-2.5 flex items-start gap-2 text-xs"
+               style="background:#FFF8E1; border:1px solid #FBBC05; color:#5F6368;">
+            <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0 mt-0.5" style="color:#EA4335;"></i>
+            <span>
+              もしかして
+              <button type="button" id="email-typo-fix" class="font-bold underline" style="color:var(--accent);"></button>
+              の入力ミスではありませんか？
+            </span>
+          </div>
+
+          <!-- 送信先エコー確認 -->
+          <div id="email-echo-block" class="hidden mt-3 rounded-xl p-4"
+               style="background:linear-gradient(135deg,rgba(66,133,244,.06),rgba(52,168,83,.06));
+                      border:1px solid rgba(66,133,244,.3);">
+            <div class="flex items-start gap-2 mb-2">
+              <i data-lucide="mail" class="w-4 h-4 mt-0.5 flex-shrink-0" style="color:var(--accent);"></i>
+              <span class="text-xs font-bold" style="color:var(--fg);">このアドレスに完了メール・Zoom URLが届きます</span>
+            </div>
+            <div id="email-echo" class="font-mono text-base sm:text-lg font-bold break-all mb-3 py-2 px-3 rounded"
+                 style="color:var(--fg); background:#ffffff; border:1px dashed var(--line);"></div>
+            <label class="flex items-start gap-2 text-xs sm:text-sm cursor-pointer leading-relaxed">
+              <input type="checkbox" id="email-confirmed" class="mt-0.5 w-4 h-4 flex-shrink-0" required />
+              <span>
+                上記のメールアドレスに<strong style="color:var(--fg);">誤りがない</strong>ことを確認しました
+              </span>
+            </label>
+            <div class="mt-2 text-[11px] leading-relaxed" style="color:var(--danger);">
+              ⚠ アドレスが誤っていると、申込み完了メール・Zoom URL・リマインドが届きません。
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-5">
         <div>
           <label class="flex items-center gap-1 text-sm font-medium mb-2">
             <span>氏名（フルネーム）</span><span class="text-xs" style="color:var(--danger);">*</span>
@@ -1197,9 +1232,6 @@ window.EVENT_CONFIG = {
           <input type="text" name="name" class="field" placeholder="例：国吉 弘孝" required autocomplete="name"/>
           <div class="text-xs mt-1.5 hidden" style="color:var(--danger);" data-err></div>
         </div>
-      </div>
-
-      <div class="grid sm:grid-cols-2 gap-5">
         <div>
           <label class="flex items-center gap-1 text-sm font-medium mb-2">
             <span>電話番号</span><span class="text-xs" style="color:var(--danger);">*</span>
@@ -1207,13 +1239,14 @@ window.EVENT_CONFIG = {
           <input type="tel" name="phone" class="field" placeholder="例：080-1234-5678" required autocomplete="tel"/>
           <div class="text-xs mt-1.5 hidden" style="color:var(--danger);" data-err></div>
         </div>
-        <div>
-          <label class="flex items-center gap-1 text-sm font-medium mb-2">
-            <span>店舗名・屋号</span><span class="text-xs" style="color:var(--danger);">*</span>
-          </label>
-          <input type="text" name="shopName" class="field" placeholder="例：SearchMania" required/>
-          <div class="text-xs mt-1.5 hidden" style="color:var(--danger);" data-err></div>
-        </div>
+      </div>
+
+      <div>
+        <label class="flex items-center gap-1 text-sm font-medium mb-2">
+          <span>店舗名・屋号</span><span class="text-xs" style="color:var(--danger);">*</span>
+        </label>
+        <input type="text" name="shopName" class="field" placeholder="例：SearchMania" required/>
+        <div class="text-xs mt-1.5 hidden" style="color:var(--danger);" data-err></div>
       </div>
 
       <div>
@@ -2110,6 +2143,82 @@ window.EVENT_CONFIG = {
   /* ---------- FORM ---------- */
   const form=$("#apply-form"), submitBtn=$("#submit-btn"), submitLabel=$("#submit-label"), submitIcon=$("#submit-icon"), submitSpinner=$("#submit-spinner");
 
+  /* ---------- Email echo + typo detection ---------- */
+  const emailInput = document.getElementById("email-input");
+  const echoBlock  = document.getElementById("email-echo-block");
+  const echoText   = document.getElementById("email-echo");
+  const echoCheck  = document.getElementById("email-confirmed");
+  const typoHint   = document.getElementById("email-typo-hint");
+  const typoFix    = document.getElementById("email-typo-fix");
+
+  // よくあるドメインタイポ → 正しい値へのマッピング
+  const DOMAIN_FIXES = {
+    "gmial.com":"gmail.com", "gmai.com":"gmail.com", "gnail.com":"gmail.com",
+    "gamil.com":"gmail.com", "gmaill.com":"gmail.com", "gmail.co":"gmail.com",
+    "gmail.con":"gmail.com", "gmail.jp":"gmail.com",
+    "yahho.co.jp":"yahoo.co.jp", "yaho.co.jp":"yahoo.co.jp", "yahoo.cojp":"yahoo.co.jp",
+    "yahoocojp":"yahoo.co.jp", "yahoo.co.jip":"yahoo.co.jp", "yahoo.co":"yahoo.co.jp",
+    "hotmial.com":"hotmail.com", "hotmai.com":"hotmail.com",
+    "outllook.com":"outlook.com", "outlok.com":"outlook.com",
+    "icoud.com":"icloud.com", "iclou.com":"icloud.com",
+    "docomo.ne.j":"docomo.ne.jp", "docomo.nejp":"docomo.ne.jp", "docomo.co.jp":"docomo.ne.jp",
+    "ezweb.ne.j":"ezweb.ne.jp", "au.co":"au.com",
+    "softbanl.ne.jp":"softbank.ne.jp", "softbank.nejp":"softbank.ne.jp",
+    "ymobile.nejp":"ymobile.ne.jp"
+  };
+
+  function detectTypo(email) {
+    if (!email || email.indexOf("@") === -1) return null;
+    const domain = email.split("@")[1].toLowerCase();
+    return DOMAIN_FIXES[domain] || null;
+  }
+
+  function updateEmailEcho() {
+    const val = emailInput ? emailInput.value.trim() : "";
+    const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+
+    // エコー表示
+    if (echoBlock && echoText) {
+      if (looksLikeEmail) {
+        echoText.textContent = val;
+        echoBlock.classList.remove("hidden");
+      } else {
+        echoBlock.classList.add("hidden");
+        if (echoCheck) echoCheck.checked = false;
+      }
+    }
+
+    // タイポ検出
+    if (typoHint && typoFix) {
+      const fixed = detectTypo(val);
+      if (fixed) {
+        const localPart = val.split("@")[0];
+        typoFix.textContent = localPart + "@" + fixed;
+        typoHint.classList.remove("hidden");
+      } else {
+        typoHint.classList.add("hidden");
+      }
+    }
+  }
+
+  if (emailInput) emailInput.addEventListener("input", updateEmailEcho);
+  if (emailInput) emailInput.addEventListener("blur", updateEmailEcho);
+
+  // 「もしかして○○？」クリックで自動修正
+  if (typoFix) {
+    typoFix.addEventListener("click", () => {
+      if (!emailInput) return;
+      emailInput.value = typoFix.textContent;
+      updateEmailEcho();
+      emailInput.focus();
+    });
+  }
+
+  // メール変更時は確認チェックをリセット（再確認を促す）
+  if (emailInput && echoCheck) {
+    emailInput.addEventListener("input", () => { echoCheck.checked = false; });
+  }
+
   function clearErrors(){ form.querySelectorAll("[data-err]").forEach(e=>{e.textContent="";e.classList.add("hidden");}); form.querySelectorAll(".field").forEach(f=>f.classList.remove("field-error")); }
   function setError(input,msg){
     input.classList.add("field-error");
@@ -2120,6 +2229,11 @@ window.EVENT_CONFIG = {
     clearErrors(); let ok=true;
     const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if(!emailRe.test(form.email.value.trim())){ setError(form.email,"有効なメールアドレスを入力してください"); ok=false; }
+    // メールアドレス確認チェック（送信先を再確認）
+    else if (echoCheck && !echoCheck.checked) {
+      setError(form.email, "メールアドレスに誤りがないかご確認いただき、下のチェックボックスにチェックを入れてください");
+      ok=false;
+    }
     if(!form.name.value.trim()){ setError(form.name,"氏名を入力してください"); ok=false; }
     if(!form.phone.value.trim()||form.phone.value.replace(/\D/g,"").length<9){ setError(form.phone,"電話番号を正しく入力してください"); ok=false; }
     if(!form.shopName.value.trim()){ setError(form.shopName,"店舗名・屋号を入力してください"); ok=false; }
