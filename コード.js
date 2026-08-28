@@ -61,7 +61,8 @@ const DEFAULT_CONFIG = [
   ["オンライン注意事項", "開催前日までにZoom URLをメールでお送りします。"],
   ["特例告知",   ""],  // 入力されていればページ上部に告知バナーを表示（例：「今回は特例でオンライン開催です」）
   ["次々回開催日", ""],  // 予告用。本ページの申込み対象（=次回）の次の開催。空欄ならWEBで「調整中」と表示
-  ["次々回テーマ", ""]   // 次々回のテーマ。空欄ならWEB上に表示されない
+  ["次々回テーマ", ""],  // 次々回のテーマ。空欄ならWEB上に表示されない
+  ["次々回開催形式", ""] // 対面 / オンライン（プルダウン）。空欄ならバッジ非表示
 ];
 
 // =============================================
@@ -314,6 +315,15 @@ function setupSheets() {
           .build()
       );
       cell.setBackground("#EAF2FE"); // 目立つ薄青
+    } else if (k === "次々回開催形式") {
+      // 空欄OK（未定なら空でバッジ非表示）
+      cell.setDataValidation(
+        SpreadsheetApp.newDataValidation()
+          .requireValueInList(["対面", "オンライン"], true)
+          .setAllowInvalid(true)
+          .build()
+      );
+      cell.setBackground("#F0F7EC"); // 予告用の薄緑
     }
   });
 
