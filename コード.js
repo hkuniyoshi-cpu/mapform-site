@@ -41,28 +41,42 @@ const MASTER_COLS = ["申込日時","開催ID","参加方法","お名前","メ�
 // 開催別シートの列 — A列がチェックボックス
 const EVENT_COLS  = ["✓","申込日時","開催ID","参加方法","お名前","メールアドレス","電話番号","店舗名・会社名","流入経路","ご質問・備考","同意項目"];
 
-// 設定シートのデフォルト値（eventIdは開催日から自動生成されるため不要）
-const DEFAULT_CONFIG = [
-  ["タイトル",   "Googleマップ診断会＋勉強会"],
-  ["キャッチコピー", "Googleマップ「お店の設定」を見直すだけで、来客数アップへの具体的改善策を無料診断します。"],
-  ["開催日",     new Date(2026, 4, 22)],  // カレンダーで選択（月は0始まり）
-  ["テーマ",     ""],  // 今回のテーマ。空欄ならWEB上に表示されない
-  ["開催時間",   "14:00 〜 15:30"],
-  ["所要時間",   "90分"],
-  ["参加費",     "無料"],
-  ["定員",       "10"],
-  ["会場名",     "Café＆Bar ツボバル"],
-  ["会場住所",   "（住所を入力）"],
-  ["地図リンク", "https://maps.app.goo.gl/rYUED1nsaJ7CEat17"],
-  ["地図埋込URL","https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d894.865614533331!2d127.6954395!3d26.2141591!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x34e569cb16dea07d%3A0x1a20f9f3ebacd842!2z44OE44Oc44OQ44OrQ2FmZe-8hkJhcg!5e0!3m2!1sja!2sjp!4v1778600875620!5m2!1sja!2sjp"],
-  ["駐車場",     "先着4台店舗前 / 近隣コインパーキングあり（有料）"],
-  ["開催形式",   "対面"],  // 対面 or オンライン（プルダウン）
-  ["オンラインURL", ""],  // Zoom等のURL（開催形式=オンラインの時に表示）
-  ["オンライン注意事項", "開催前日までにZoom URLをメールでお送りします。"],
-  ["特例告知",   ""],  // 入力されていればページ上部に告知バナーを表示（例：「今回は特例でオンライン開催です」）
-  ["次々回開催日", ""],  // 予告用。本ページの申込み対象（=次回）の次の開催。空欄ならWEBで「調整中」と表示
-  ["次々回テーマ", ""],  // 次々回のテーマ。空欄ならWEB上に表示されない
-  ["次々回開催形式", ""] // 対面 / オンライン（プルダウン）。空欄ならバッジ非表示
+// ─────────────────────────────────────────────
+// 設定シートのレイアウト
+//   上段：開催スケジュール表（次回 / 次々回 / その次）… 日付・形式・テーマを横一列で入力
+//   下段：基本情報 / 会場 / オンライン / その他 … 「項目｜値」形式
+// 「次回」＝LPで申込みを受け付けている回（eventId・残席・メール・リマインドの基準）
+// ─────────────────────────────────────────────
+const SCHEDULE_SLOTS = [
+  { key: "次回",   label: "次回（申込受付中）" },
+  { key: "次々回", label: "次々回" },
+  { key: "その次", label: "その次" }
+];
+const FORMAT_OPTIONS = ["対面", "オンライン"];
+
+const DEFAULT_CONFIG_SECTIONS = [
+  { title: "【基本情報】", rows: [
+    ["タイトル",       "Googleマップ診断会＋勉強会"],
+    ["キャッチコピー", "Googleマップ「お店の設定」を見直すだけで、来客数アップへの具体的改善策を無料診断します。"],
+    ["開催時間",       "14:00 〜 15:30"],
+    ["所要時間",       "90分"],
+    ["参加費",         "無料"],
+    ["定員",           "10"]
+  ]},
+  { title: "【会場（対面の回で使用）】", rows: [
+    ["会場名",     "Café＆Bar ツボバル"],
+    ["会場住所",   "（住所を入力）"],
+    ["地図リンク", "https://maps.app.goo.gl/rYUED1nsaJ7CEat17"],
+    ["地図埋込URL","https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d894.865614533331!2d127.6954395!3d26.2141591!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x34e569cb16dea07d%3A0x1a20f9f3ebacd842!2z44OE44Oc44OQ44OrQ2FmZe-8hkJhcg!5e0!3m2!1sja!2sjp!4v1778600875620!5m2!1sja!2sjp"],
+    ["駐車場",     "先着4台店舗前 / 近隣コインパーキングあり（有料）"]
+  ]},
+  { title: "【オンライン（Zoomの回で使用）】", rows: [
+    ["オンラインURL",      ""],
+    ["オンライン注意事項", "開催前日までにZoom URLをメールでお送りします。"]
+  ]},
+  { title: "【その他】", rows: [
+    ["特例告知", ""]  // 入力するとLP上部に告知バナー（例：「今回は特例でオンライン開催です」）
+  ]}
 ];
 
 // =============================================
@@ -74,8 +88,9 @@ function onOpen() {
     .addItem("↕ 申込一覧：新しい順に並べ替え", "sortByDateDesc")
     .addItem("↕ 申込一覧：名前順に並べ替え",   "sortByName")
     .addSeparator()
-    .addItem("⚡ 設定シートを最新化（既存データ保持）", "upgradeConfigSheet")
-    .addItem("🔧 初期セットアップ（初回のみ・既存データ消去）", "setupSheets")
+    .addItem("⏭ 開催後：スケジュールを1つ繰り上げ", "shiftSchedule")
+    .addItem("♻ 設定シートを新レイアウトに作り直す（値は引継ぎ）", "rebuildConfigSheet")
+    .addItem("🔧 初期セットアップ（初回のみ）", "setupSheets")
     .addItem("⏰ リマインドトリガー設定",        "setupReminderTrigger")
     .addSeparator()
     .addItem("📧 送信元エイリアスをチェック", "checkSenderAlias")
@@ -144,54 +159,152 @@ function sendTestEmail() {
 }
 
 // =============================================
-// 設定シートを最新化：既存データを保持したまま
-// DEFAULT_CONFIG にあって設定シートに無い項目だけを追加
-// （新機能を追加した後、ユーザーが手動で行を足さなくて済むように）
+// 設定シート：新レイアウト（スケジュール表＋セクション別の項目）
 // =============================================
-function upgradeConfigSheet() {
+
+// 設定シートを読み取り、スケジュール3枠と「項目→値」を返す（新旧どちらのレイアウトでも読める）
+function readConfigSheetRaw_(sheet) {
+  var out = { schedule: {}, kv: {} };
+  if (!sheet || sheet.getLastRow() < 1) return out;
+  var rows = sheet.getRange(1, 1, sheet.getLastRow(), 4).getValues();
+  rows.forEach(function(r) {
+    var a = (r[0] || "").toString().trim();
+    if (!a || a.charAt(0) === "【" || a === "回" || a === "項目") return;
+    var slot = slotKeyOf_(a);
+    if (slot) {
+      out.schedule[slot] = { date: r[1], format: (r[2] || "").toString().trim(), theme: (r[3] || "").toString().trim() };
+    } else {
+      out.kv[a] = r[1];
+    }
+  });
+  return out;
+}
+
+// A列ラベル → スケジュール枠キー（"次回（申込受付中）"→"次回"）。該当しなければ null
+function slotKeyOf_(label) {
+  // 旧レイアウトの「次回開催日」「次々回テーマ」等は項目扱いにするため、完全一致（＋「（…）」付き）のみ
+  var base = label.replace(/（.*）$/, "").replace(/\(.*\)$/, "").trim();
+  if (base === "次回" || base === "次々回" || base === "その次") return base;
+  return null;
+}
+
+// 設定シートを新レイアウトで書き出す（sched: {次回:{date,format,theme},...}, kv: {項目:値}）
+function writeConfigLayout_(sheet, sched, kv) {
+  sheet.clear();
+  sheet.getDataRange().clearDataValidations();
+  sheet.setFrozenRows(0);
+
+  var row = 1;
+  // ── スケジュール表 ──
+  sheet.getRange(row, 1, 1, 4).setValues([["【開催スケジュール】 次回＝LPで申込受付中の回", "", "", ""]]);
+  sheet.getRange(row, 1, 1, 4).merge().setFontWeight("bold").setBackground("#202124").setFontColor("#FFFFFF");
+  row++;
+  sheet.getRange(row, 1, 1, 4).setValues([["回", "開催日", "開催形式", "テーマ"]])
+       .setFontWeight("bold").setBackground("#4285F4").setFontColor("#FFFFFF");
+  row++;
+  var schedStart = row;
+  SCHEDULE_SLOTS.forEach(function(s) {
+    var v = sched[s.key] || {};
+    sheet.getRange(row, 1, 1, 4).setValues([[s.label, v.date || "", v.format || "", v.theme || ""]]);
+    row++;
+  });
+  // 日付＝カレンダー入力 / 形式＝プルダウン
+  var n = SCHEDULE_SLOTS.length;
+  sheet.getRange(schedStart, 2, n, 1).setNumberFormat("yyyy/MM/dd")
+       .setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).build());
+  sheet.getRange(schedStart, 3, n, 1)
+       .setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(FORMAT_OPTIONS, true).setAllowInvalid(true).build());
+  sheet.getRange(schedStart, 1, 1, 4).setBackground("#E6F4EA").setFontWeight("bold");   // 次回＝緑で強調
+  sheet.getRange(schedStart + 1, 1, n - 1, 4).setBackground("#F8F9FA");
+  row++; // 空行
+
+  // ── 項目｜値 セクション ──
+  DEFAULT_CONFIG_SECTIONS.forEach(function(sec) {
+    sheet.getRange(row, 1, 1, 2).setValues([[sec.title, "値"]])
+         .setFontWeight("bold").setBackground("#E8EAED");
+    row++;
+    sec.rows.forEach(function(pair) {
+      var key = pair[0];
+      var val = (kv[key] !== undefined && kv[key] !== null && kv[key] !== "") ? kv[key] : pair[1];
+      sheet.getRange(row, 1, 1, 2).setValues([[key, val]]);
+      row++;
+    });
+    row++; // セクション間の空行
+  });
+
+  sheet.setColumnWidth(1, 200);
+  sheet.setColumnWidth(2, 360);
+  sheet.setColumnWidth(3, 110);
+  sheet.setColumnWidth(4, 320);
+}
+
+// 旧レイアウト → 新レイアウトへ値を引き継いで作り直す（開催別タブ・申込一覧には触れない）
+function rebuildConfigSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var ui = SpreadsheetApp.getUi();
   var sheet = ss.getSheetByName(CONFIG_SHEET);
-  if (!sheet) {
-    ui.alert("「設定」シートが見つかりません。先に「初期セットアップ」を実行してください。");
+  if (!sheet) sheet = ss.insertSheet(CONFIG_SHEET, 0);
+
+  var ok = ui.alert("設定シートを作り直します",
+    "「設定」シートだけを新レイアウトに作り直します（今の値は引き継ぎます）。\n" +
+    "申込一覧・開催別タブには一切触れません。\n\n実行しますか？", ui.ButtonSet.OK_CANCEL);
+  if (ok !== ui.Button.OK) return;
+
+  var raw = readConfigSheetRaw_(sheet);
+  var kv = raw.kv, sched = raw.schedule;
+
+  // 旧レイアウトからの引継ぎ（スケジュール表がまだ無い場合）
+  if (!sched["次回"]) {
+    sched["次回"] = { date: kv["開催日"] || "", format: (kv["開催形式"] || "").toString().trim(), theme: (kv["テーマ"] || "").toString().trim() };
+    var curD = parseDate_(kv["開催日"]);
+    var nxt = parseDate_(kv["次々回開催日"]) || parseDate_(kv["次回開催日"]);
+    if (nxt && curD && nxt.getTime() === curD.getTime()) nxt = null; // 今回と同じ日付は捨てる
+    var nxtTheme = (kv["次々回テーマ"] || kv["次回テーマ"] || "").toString().trim();
+    if (nxtTheme === "調整中") nxtTheme = "";
+    sched["次々回"] = { date: nxt || "", format: (kv["次々回開催形式"] || "").toString().trim(), theme: nxtTheme };
+    sched["その次"] = { date: "", format: "", theme: "" };
+  }
+
+  writeConfigLayout_(sheet, sched, kv);
+  ui.alert("✅ 設定シートを作り直しました。\n\n" +
+    "上の表の「次回」がLPで申込受付中の回です。\n" +
+    "開催が終わったら メニュー「⏭ 開催後：スケジュールを1つ繰り上げ」で\n次々回→次回、その次→次々回 に自動で移動できます。");
+}
+
+// 開催が終わったら：次々回→次回、その次→次々回、その次は空に
+function shiftSchedule() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ui = SpreadsheetApp.getUi();
+  var sheet = ss.getSheetByName(CONFIG_SHEET);
+  var rows = sheet.getRange(1, 1, sheet.getLastRow(), 4).getValues();
+  var idx = {};
+  rows.forEach(function(r, i) {
+    var k = slotKeyOf_((r[0] || "").toString().trim());
+    if (k && !idx[k]) idx[k] = i + 1;
+  });
+  if (!idx["次回"] || !idx["次々回"] || !idx["その次"]) {
+    ui.alert("スケジュール表が見つかりません。先に「♻ 設定シートを新レイアウトに作り直す」を実行してください。");
     return;
   }
-  var lastRow = sheet.getLastRow();
-  var existing = lastRow >= 2
-    ? sheet.getRange(2, 1, lastRow - 1, 1).getValues().map(function(r){ return (r[0]||"").toString().trim(); })
-    : [];
-  var added = 0;
-  DEFAULT_CONFIG.forEach(function(row) {
-    var key = row[0];
-    if (existing.indexOf(key) === -1) {
-      sheet.appendRow(row);
-      added++;
-    }
-  });
-  // 「開催日」「次々回開催日」「開催形式」に validation / 書式を（再）適用
-  var newLast = sheet.getLastRow();
-  var cfgData = sheet.getRange(2, 1, newLast - 1, 2).getValues();
-  cfgData.forEach(function(row, i) {
-    var k = row[0];
-    var isPreviewDate = (k === "次々回開催日" || k === "次回開催日");
-    var cell = sheet.getRange(i + 2, 2);
-    if (k === "開催日" || isPreviewDate) {
-      cell.setNumberFormat("yyyy/MM/dd");
-      cell.setDataValidation(
-        SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(isPreviewDate).build()
-      );
-    } else if (k === "開催形式") {
-      cell.setDataValidation(
-        SpreadsheetApp.newDataValidation()
-          .requireValueInList(["対面", "オンライン"], true)
-          .setAllowInvalid(false)
-          .build()
-      );
-      cell.setBackground("#EAF2FE");
-    }
-  });
-  ui.alert("✅ 設定シートを最新化しました。\n\n追加された項目数：" + added + "\n\n既存データは全て保持されています。");
+  var cur = sheet.getRange(idx["次回"], 2, 1, 3).getValues()[0];
+  var nx  = sheet.getRange(idx["次々回"], 2, 1, 3).getValues()[0];
+  var nx2 = sheet.getRange(idx["その次"], 2, 1, 3).getValues()[0];
+  var ok = ui.alert("スケジュールを繰り上げます",
+    "次回：" + fmtSlot_(cur) + "  → 終了扱い\n" +
+    "次々回：" + fmtSlot_(nx) + "  → 次回（申込受付開始）\n" +
+    "その次：" + fmtSlot_(nx2) + "  → 次々回\n\n実行しますか？", ui.ButtonSet.OK_CANCEL);
+  if (ok !== ui.Button.OK) return;
+  sheet.getRange(idx["次回"], 2, 1, 3).setValues([nx]);
+  sheet.getRange(idx["次々回"], 2, 1, 3).setValues([nx2]);
+  sheet.getRange(idx["その次"], 2, 1, 3).setValues([["", "", ""]]);
+  ui.alert("✅ 繰り上げました。「その次」に新しい予定を入れてください。");
 }
+
+function fmtSlot_(v) {
+  var d = parseDate_(v[0]);
+  return (d ? Utilities.formatDate(d, "Asia/Tokyo", "M/d") : "未定") + (v[1] ? "（" + v[1] + "）" : "");
+}
+
 
 // =============================================
 // POST: フォーム申込み受信
@@ -284,48 +397,11 @@ function setupSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var ui = SpreadsheetApp.getUi();
 
-  // 設定シート
+  // 設定シート（既にあれば値を引き継いで新レイアウトへ）
   var configSheet = ss.getSheetByName(CONFIG_SHEET);
   if (!configSheet) configSheet = ss.insertSheet(CONFIG_SHEET, 0);
-  else configSheet.clearContents();
-  configSheet.appendRow(["項目", "値"]);
-  configSheet.getRange(1, 1, 1, 2).setFontWeight("bold").setBackground("#4285F4").setFontColor("#FFFFFF");
-  configSheet.setFrozenRows(1);
-  DEFAULT_CONFIG.forEach(function(row) { configSheet.appendRow(row); });
-  configSheet.setColumnWidth(1, 180);
-  configSheet.setColumnWidth(2, 500);
-
-  // 「開催日」「次々回開催日」セルをカレンダー入力に設定（旧名「次回開催日」も後方互換）
-  // 「開催形式」セルにはプルダウン（対面/オンライン）を設定
-  var cfgData = configSheet.getRange(2, 1, configSheet.getLastRow() - 1, 2).getValues();
-  cfgData.forEach(function(row, i) {
-    var k = row[0];
-    var isPreviewDate = (k === "次々回開催日" || k === "次回開催日");
-    var cell = configSheet.getRange(i + 2, 2);
-    if (k === "開催日" || isPreviewDate) {
-      cell.setNumberFormat("yyyy/MM/dd");
-      cell.setDataValidation(
-        SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(isPreviewDate).build()
-      );
-    } else if (k === "開催形式") {
-      cell.setDataValidation(
-        SpreadsheetApp.newDataValidation()
-          .requireValueInList(["対面", "オンライン"], true)
-          .setAllowInvalid(false)
-          .build()
-      );
-      cell.setBackground("#EAF2FE"); // 目立つ薄青
-    } else if (k === "次々回開催形式") {
-      // 空欄OK（未定なら空でバッジ非表示）
-      cell.setDataValidation(
-        SpreadsheetApp.newDataValidation()
-          .requireValueInList(["対面", "オンライン"], true)
-          .setAllowInvalid(true)
-          .build()
-      );
-      cell.setBackground("#F0F7EC"); // 予告用の薄緑
-    }
-  });
+  var raw = readConfigSheetRaw_(configSheet);
+  writeConfigLayout_(configSheet, raw.schedule, raw.kv);
 
   // 申込一覧シート（累積ログ）
   var masterSheet = ss.getSheetByName(MASTER_SHEET);
@@ -334,13 +410,13 @@ function setupSheets() {
 
   ui.alert(
     "✅ セットアップ完了\n\n" +
-    "「設定」シートに開催情報を入力してください。\n\n" +
+    "「設定」シート上段の表に 次回／次々回／その次 を入力してください。\n\n" +
     "【シートの使い分け】\n" +
+    "・設定 … 上段＝開催スケジュール、下段＝基本情報・会場・Zoom\n" +
     "・申込一覧 … 全開催の累積ログ（閲覧・並べ替え用）\n" +
-    "・[eventId]タブ … A列✓で残席をindex.htmlに反映\n\n" +
-    "【次回開催への切り替え】\n" +
-    "設定シートの「eventId」を新しい値に変更するだけ。\n" +
-    "次の申込みで新しいタブが自動生成されます。"
+    "・[開催日]タブ … A列✓で残席をLPに反映\n\n" +
+    "【開催が終わったら】\n" +
+    "メニュー「⏭ 開催後：スケジュールを1つ繰り上げ」"
   );
 }
 
@@ -577,31 +653,51 @@ function nextDataRow_(sheet) {
 
 function readConfig_(ss) {
   var sheet = ss.getSheetByName(CONFIG_SHEET);
-  if (!sheet || sheet.getLastRow() < 2) return {};
-  var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
-  var cfg  = {};
-  rows.forEach(function(row) {
-    var key = row[0] ? row[0].toString().trim() : "";
-    if (!key) return;
-    var val = row[1];
+  if (!sheet || sheet.getLastRow() < 1) return {};
+  var raw = readConfigSheetRaw_(sheet);
+  var cfg = {};
 
-    if (key === "開催日") {
-      // Date型・文字列型どちらでも eventId を導出
-      var dateObj = parseDate_(val);
-      if (dateObj) {
-        cfg["開催日"]  = formatJpDate_(dateObj);
-        cfg["eventId"] = Utilities.formatDate(dateObj, "Asia/Tokyo", "yyyy-MM-dd");
-      } else if (val) {
-        cfg["開催日"] = val.toString();
-      }
-    } else if (key === "次々回開催日" || key === "次回開催日") {
-      // 予告用。空欄なら空文字（WEB側で「調整中」表示）。旧名「次回開催日」も読む（後方互換）
-      var nextObj = parseDate_(val);
-      cfg[key] = nextObj ? formatJpDate_(nextObj) : (val ? val.toString().trim() : "");
-    } else {
-      cfg[key] = val !== undefined ? val.toString() : "";
-    }
+  // 項目｜値（Dateは文字列化）
+  Object.keys(raw.kv).forEach(function(k) {
+    var v = raw.kv[k];
+    cfg[k] = (v === undefined || v === null) ? "" : (v instanceof Date ? formatJpDate_(v) : v.toString());
   });
+
+  // スケジュール表（次回・次々回・その次）
+  var schedule = [];
+  SCHEDULE_SLOTS.forEach(function(s) {
+    var v = raw.schedule[s.key] || {};
+    var d = parseDate_(v.date);
+    schedule.push({
+      slot:      s.key,
+      date:      d ? Utilities.formatDate(d, "Asia/Tokyo", "yyyy-MM-dd") : "",
+      dateLabel: d ? formatJpDate_(d) : "",
+      format:    FORMAT_OPTIONS.indexOf(v.format) !== -1 ? v.format : "",
+      theme:     v.theme || ""
+    });
+  });
+
+  if (raw.schedule["次回"]) {
+    // 新レイアウト：既存処理（メール・リマインド・残席）が使うキーを「次回」から生成
+    var cur = schedule[0];
+    cfg["開催日"]   = cur.dateLabel;
+    cfg["eventId"]  = cur.date;
+    cfg["開催形式"] = cur.format || "対面";
+    cfg["テーマ"]   = cur.theme;
+  } else {
+    // 旧レイアウト（作り直し前）の互換：旧項目からスケジュールを組み立てる
+    var d0 = parseDate_(raw.kv["開催日"]);
+    if (d0) { cfg["開催日"] = formatJpDate_(d0); cfg["eventId"] = Utilities.formatDate(d0, "Asia/Tokyo", "yyyy-MM-dd"); }
+    var d1 = parseDate_(raw.kv["次々回開催日"]) || parseDate_(raw.kv["次回開催日"]);
+    if (d1 && d0 && d1.getTime() === d0.getTime()) d1 = null;
+    var t1 = (raw.kv["次々回テーマ"] || raw.kv["次回テーマ"] || "").toString().trim();
+    var f1 = (raw.kv["次々回開催形式"] || "").toString().trim();
+    schedule[0] = { slot:"次回", date: d0 ? cfg["eventId"] : "", dateLabel: d0 ? cfg["開催日"] : "",
+                    format: (raw.kv["開催形式"] || "").toString().trim(), theme: (raw.kv["テーマ"] || "").toString().trim() };
+    schedule[1] = { slot:"次々回", date: d1 ? Utilities.formatDate(d1, "Asia/Tokyo", "yyyy-MM-dd") : "", dateLabel: d1 ? formatJpDate_(d1) : "",
+                    format: FORMAT_OPTIONS.indexOf(f1) !== -1 ? f1 : "", theme: t1 === "調整中" ? "" : t1 };
+  }
+  cfg.schedule = schedule;
   return cfg;
 }
 

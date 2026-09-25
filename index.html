@@ -741,7 +741,7 @@ window.EVENT_CONFIG = {
 
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl" data-anim="up">
           <div class="bg-white rounded-xl p-5 shadow-sm border" style="border-color:var(--line);">
-            <div class="font-mono text-xs tracking-widest mb-2 font-semibold" style="color:var(--accent);">DATE</div>
+            <div class="font-mono text-xs tracking-widest mb-2 font-semibold" style="color:var(--accent);">次回開催日</div>
             <div class="text-lg md:text-xl font-bold leading-tight" style="color:var(--fg);" id="fact-date">—</div>
           </div>
           <div class="bg-white rounded-xl p-5 shadow-sm border" style="border-color:var(--line);">
@@ -828,24 +828,14 @@ window.EVENT_CONFIG = {
           <span>申込みは1分で完了します</span>
         </div>
 
-        <!-- 次々回開催予告（コンパクト） -->
-        <div class="card mt-4 p-4" data-anim="up"
-             style="border-color:var(--line); background:var(--bg-2);">
-          <div class="flex items-center justify-between gap-3 flex-wrap">
-            <div class="flex items-center gap-2.5">
-              <i data-lucide="calendar-clock" class="w-4 h-4" style="color:var(--accent);"></i>
-              <span class="text-xs font-mono tracking-widest font-semibold" style="color:var(--fg-mute);">NEXT EVENT</span>
-            </div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="next-event-format-badge hidden inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"></span>
-              <span class="next-event-date text-sm font-bold" style="color:var(--fg);">調整中</span>
-            </div>
+        <!-- 開催スケジュール（コンパクト）：次回／次々回／その次 -->
+        <div class="card mt-4 p-4" data-anim="up" style="border-color:var(--line); background:var(--bg-2);">
+          <div class="flex items-center gap-2.5 mb-2">
+            <i data-lucide="calendar-clock" class="w-4 h-4" style="color:var(--accent);"></i>
+            <span class="text-xs font-mono tracking-widest font-semibold" style="color:var(--fg-mute);">SCHEDULE</span>
+            <span class="text-xs font-bold" style="color:var(--fg-dim);">開催スケジュール</span>
           </div>
-          <div class="next-event-theme-row hidden mt-2 pt-2 text-xs flex items-center gap-2"
-               style="border-top:1px dashed var(--line);">
-            <span class="font-semibold" style="color:var(--fg-mute);">テーマ</span>
-            <span class="next-event-theme font-bold leading-snug" style="color:var(--fg);"></span>
-          </div>
+          <div id="schedule-mini"></div>
         </div>
       </div>
     </div>
@@ -1348,34 +1338,17 @@ window.EVENT_CONFIG = {
   </div>
 </section>
 
-<!-- ====================== NEXT EVENT PREVIEW ====================== -->
+<!-- ====================== SCHEDULE（次回・次々回・その次） ====================== -->
 <section class="section-pad" style="background:var(--bg);">
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-10">
-    <div class="card p-8 md:p-12 text-center" data-anim="up" style="position:relative; overflow:hidden;">
-      <!-- accent bar -->
+    <div class="card p-6 md:p-10" data-anim="up" style="position:relative; overflow:hidden;">
       <div style="position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853);"></div>
-
-      <div class="eyebrow inline-flex mb-5">Next Event</div>
-      <h2 class="section-title mb-8">次々回開催予告</h2>
-
-      <div class="inline-flex flex-col items-center gap-3 px-8 py-7 rounded-2xl"
-           style="background:var(--bg-2); border:1px solid var(--line); min-width:min(360px,90%);">
-        <span class="next-event-format-badge hidden inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"></span>
-        <div class="font-mono text-xs tracking-widest font-semibold" style="color:var(--accent);">NEXT DATE</div>
-        <div class="next-event-date font-display text-3xl md:text-4xl font-bold leading-tight"
-             style="color:var(--fg);">調整中</div>
-        <div class="next-event-theme-row hidden mt-3 pt-4 flex flex-col items-center gap-1"
-             style="border-top:1px dashed var(--line); align-self:stretch;">
-          <span class="font-mono text-[10px] tracking-widest font-semibold" style="color:var(--fg-mute);">THEME</span>
-          <span class="next-event-theme text-base md:text-lg font-bold leading-snug text-center"
-                style="color:var(--fg);"></span>
-        </div>
+      <div class="text-center">
+        <div class="eyebrow inline-flex mb-4">Schedule</div>
+        <h2 class="section-title mb-2">開催スケジュール</h2>
+        <p class="text-sm mb-8" style="color:var(--fg-dim);">次回から先の予定です。日程・形式は決まり次第更新します。</p>
       </div>
-
-      <p class="text-sm leading-relaxed mt-8" style="color:var(--fg-dim);">
-        次回の開催が決まり次第、こちらでお知らせします。<br class="hidden sm:block" />
-        最新情報は公式サイト・SNSでもご案内します。
-      </p>
+      <div id="schedule-full" class="space-y-3"></div>
     </div>
   </div>
 </section>
@@ -1591,7 +1564,7 @@ window.EVENT_CONFIG = {
     setTimeout(() => el.remove(), 600);
   }
   // フェイルセーフ：GAS応答が無くても5秒で必ず非表示にする
-  const loaderFailsafe = setTimeout(hidePageLoader, 5000);
+  const loaderFailsafe = setTimeout(hidePageLoader, 10000); // GASのコールドスタート（数秒）を待つ
 
   // 開催形式（対面/オンライン）に応じてDOMを切り替え
   function applyEventFormat(format, c) {
@@ -1726,6 +1699,69 @@ window.EVENT_CONFIG = {
     }
   }
 
+  // 開催スケジュール（次回／次々回／その次）を描画
+  function renderSchedule(list) {
+    const SLOTS = [
+      { key:"次回",   label:"次回",   sub:"申込受付中" },
+      { key:"次々回", label:"次々回", sub:"" },
+      { key:"その次", label:"その次", sub:"" }
+    ];
+    const bySlot = {};
+    (list || []).forEach(s => { if (s && s.slot) bySlot[s.slot] = s; });
+    const esc = t => String(t || "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+    const badge = (fmt, small) => {
+      if (fmt === "オンライン") return `<span class="inline-flex items-center gap-1 ${small?"px-2 py-0.5 text-[10px]":"px-2.5 py-1 text-xs"} rounded-full font-bold whitespace-nowrap" style="background:linear-gradient(135deg,#4285F4,#34A853);color:#fff;"><i data-lucide="video" class="w-3 h-3"></i>Zoom</span>`;
+      if (fmt === "対面")       return `<span class="inline-flex items-center gap-1 ${small?"px-2 py-0.5 text-[10px]":"px-2.5 py-1 text-xs"} rounded-full font-bold whitespace-nowrap" style="background:#FEF2F0;color:#EA4335;border:1px solid #F8D2CC;"><i data-lucide="map-pin" class="w-3 h-3"></i>対面</span>`;
+      return `<span class="inline-flex items-center ${small?"px-2 py-0.5 text-[10px]":"px-2.5 py-1 text-xs"} rounded-full font-bold whitespace-nowrap" style="background:#F1F3F4;color:#9AA0A6;">形式未定</span>`;
+    };
+    const slotPill = (s, small) => {
+      const isNext = s.key === "次回";
+      const st = isNext ? "background:#34A853;color:#fff;" : "background:#E8EAED;color:#5F6368;";
+      return `<span class="inline-flex items-center justify-center ${small?"w-14 text-[11px] py-0.5":"w-16 text-xs py-1"} rounded-md font-bold flex-shrink-0" style="${st}">${s.label}</span>`;
+    };
+
+    // コンパクト（ヒーロー横）
+    const mini = document.getElementById("schedule-mini");
+    if (mini) {
+      mini.innerHTML = SLOTS.map((s, i) => {
+        const v = bySlot[s.key] || {};
+        return `<div class="flex items-center gap-2 py-1.5 ${i ? "border-t border-dashed" : ""}" style="border-color:var(--line);">
+          ${slotPill(s, true)}
+          <span class="text-sm font-bold flex-1 min-w-0 truncate" style="color:${v.dateLabel ? "var(--fg)" : "var(--fg-mute)"};">${esc(v.dateLabel || "調整中")}</span>
+          ${v.dateLabel ? badge(v.format, true) : ""}
+        </div>`;
+      }).join("");
+    }
+
+    // 詳細（最下部）
+    const full = document.getElementById("schedule-full");
+    if (full) {
+      full.innerHTML = SLOTS.map(s => {
+        const v = bySlot[s.key] || {};
+        const isNext = s.key === "次回";
+        return `<div class="rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3"
+                     style="background:${isNext ? "linear-gradient(135deg,rgba(52,168,83,.08),rgba(66,133,244,.06))" : "var(--bg-2)"};
+                            border:1px solid ${isNext ? "rgba(52,168,83,.4)" : "var(--line)"};">
+          <div class="flex items-center gap-2">
+            ${slotPill(s, false)}
+            ${s.sub ? `<span class="text-[11px] font-bold" style="color:#34A853;">${s.sub}</span>` : ""}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-display text-lg sm:text-xl font-bold" style="color:${v.dateLabel ? "var(--fg)" : "var(--fg-mute)"};">${esc(v.dateLabel || "調整中")}</span>
+              ${v.dateLabel ? badge(v.format, false) : ""}
+            </div>
+            ${v.theme ? `<div class="text-sm mt-1" style="color:var(--fg-dim);"><span class="text-xs font-bold mr-1" style="color:var(--fg-mute);">テーマ</span>${esc(v.theme)}</div>` : ""}
+          </div>
+          ${isNext && v.dateLabel ? `<a href="#apply" class="btn-primary inline-flex items-center justify-center gap-1 px-4 py-2 text-xs whitespace-nowrap">申込む<i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></a>` : ""}
+        </div>`;
+      }).join("");
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+  // GAS応答前・失敗時も「調整中」で枠を表示しておく
+  renderSchedule([]);
+
   // 日付を「2026年7月23日（木）」形式に整形。整形済み・空文字・パース不能はそのまま返す
   function formatToJaDate(input) {
     if (!input) return "";
@@ -1794,20 +1830,20 @@ window.EVENT_CONFIG = {
         if (iframe) iframe.src = c["地図埋込URL"];
       }
 
-      // 次々回開催日（予告）— 未入力なら「調整中」。3箇所すべて更新
-      // 新キー「次々回開催日」を優先、旧キー「次回開催日」も読む（後方互換）。
-      // ただし旧キーが【今回の開催日】と同じ値になっている場合は無視する
-      // （項目名変更前の残存データが今回開催日と同一になり、次々回として二重表示されるのを防止）。
-      const currentDateStr = formatToJaDate(c["開催日"]);
-      let nextRaw = c["次々回開催日"];
-      if (!nextRaw) {
-        const legacyStr = formatToJaDate(c["次回開催日"]);
-        if (legacyStr && legacyStr !== currentDateStr) nextRaw = c["次回開催日"];
+      // 開催スケジュール（次回／次々回／その次）— ヒーロー横の一覧と最下部の一覧を描画
+      if (Array.isArray(c.schedule)) {
+        renderSchedule(c.schedule);
+      } else {
+        // 旧GAS（schedule未対応）向けの組み立て
+        const d0 = formatToJaDate(c["開催日"]);
+        let d1 = formatToJaDate(c["次々回開催日"] || c["次回開催日"]);
+        if (d1 === d0) d1 = "";
+        const t1 = (c["次々回テーマ"] || c["次回テーマ"] || "").toString().trim();
+        renderSchedule([
+          { slot:"次回",   dateLabel:d0, format:(c["開催形式"]||"").trim(), theme:(c["テーマ"]||"").trim() },
+          { slot:"次々回", dateLabel:d1, format:(c["次々回開催形式"]||"").trim(), theme: t1 === "調整中" ? "" : t1 }
+        ]);
       }
-      const nextStr = formatToJaDate(nextRaw);
-      document.querySelectorAll(".next-event-date").forEach(el => {
-        el.textContent = nextStr || "調整中";
-      });
 
       // 今回のテーマ（テーマが入っていれば表示、未入力なら非表示）— ヒーロー+フォーム上部
       const themeStr = (c["テーマ"] || "").toString().trim();
@@ -1818,36 +1854,6 @@ window.EVENT_CONFIG = {
         const formTheme = document.getElementById("form-current-theme");
         const formBlock = document.getElementById("form-theme-block");
         if (formTheme && formBlock) { formTheme.textContent = themeStr; formBlock.classList.remove("hidden"); }
-      }
-
-      // 次々回テーマ（新キー優先、旧キー後方互換）。入っていれば3箇所表示、未入力なら非表示
-      const nextTheme = (c["次々回テーマ"] || c["次回テーマ"] || "").toString().trim();
-      if (nextTheme) {
-        document.querySelectorAll(".next-event-theme").forEach(el => { el.textContent = nextTheme; });
-        document.querySelectorAll(".next-event-theme-row").forEach(el => el.classList.remove("hidden"));
-      }
-
-      // 次々回開催形式（対面 / オンライン）— 入っていれば予告枠にバッジ表示
-      const nextFormat = (c["次々回開催形式"] || "").toString().trim();
-      if (nextFormat === "対面" || nextFormat === "オンライン") {
-        const isOnlineNext = nextFormat === "オンライン";
-        const label = isOnlineNext ? "オンライン開催予定" : "対面開催予定";
-        const iconName = isOnlineNext ? "video" : "map-pin";
-        document.querySelectorAll(".next-event-format-badge").forEach(el => {
-          el.innerHTML = `<i data-lucide="${iconName}" class="w-3 h-3"></i><span>${label}</span>`;
-          if (isOnlineNext) {
-            el.style.background = "linear-gradient(135deg,#4285F4,#34A853)";
-            el.style.color = "#ffffff";
-            el.style.border = "0";
-          } else {
-            el.style.background = "#FEF2F0";
-            el.style.color = "#EA4335";
-            el.style.border = "1px solid #F8D2CC";
-          }
-          el.classList.remove("hidden");
-        });
-        // lucide 再描画（アイコンが data-lucide として挿入されたため）
-        if (window.lucide) lucide.createIcons();
       }
 
       // 開催形式（対面 or オンライン）— DOM切替

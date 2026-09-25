@@ -4,3 +4,5 @@
 # OS生成
 Thumbs.db
 .DS_Store
+
+.claude/
