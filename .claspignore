@@ -17,3 +17,8 @@ README.md
 .clasp.json
 
 .claude/**
+
+functions/**
+*.txt
+*.src
+*.xml
