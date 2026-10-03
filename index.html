@@ -2152,6 +2152,14 @@ window.EVENT_CONFIG = {
         const d0 = formatToJaDate(c["開催日"]);
         sched = [ normSlot({ slot:"次回", date: c["eventId"] || "", dateLabel:d0, format:(c["開催形式"]||"").trim(), theme:(c["テーマ"]||"").trim() }, c, 0) ];
       }
+      // 表示は日付順：スプレッドシートの行の並びに関係なく、近い順に 次回／次々回／その次 と振り直す
+      // （開催日を過ぎた回は表示・受付から外す。日付未入力の行は末尾＝「調整中」）
+      const todayJst = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+      sched = sched.filter(v => !v.date || v.date >= todayJst)
+                   .sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
+      ["次回", "次々回", "その次"].forEach((label, i) => { if (sched[i]) sched[i].slot = label; });
+      sched = sched.slice(0, 3);
+
       renderSchedule(sched);
       injectEventJsonLd(sched, c);
 
