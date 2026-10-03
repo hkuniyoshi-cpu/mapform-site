@@ -466,6 +466,19 @@ window.EVENT_CONFIG = {
     .consent-desc{ font-size:11.5px; }
   }
 
+  /* ===== 回の選択（複数回同時受付） ===== */
+  .event-picker{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
+  .event-pick{
+    text-align:left; padding:10px 12px; border-radius:12px; cursor:pointer;
+    background:#fff; border:2px solid var(--line); transition:border-color .15s, box-shadow .15s;
+  }
+  .event-pick:hover{ border-color:rgba(66,133,244,.5); }
+  .event-pick.is-active{ border-color:#4285F4; box-shadow:0 2px 12px rgba(66,133,244,.2); background:#F5F9FF; }
+  .event-pick__date{ font-weight:800; font-size:14px; color:var(--fg); white-space:nowrap; }
+  .event-pick__meta{ font-size:11px; color:var(--fg-dim); margin-top:3px; line-height:1.5; }
+  .tag-special{ display:inline-block; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:800;
+                background:#FBBC05; color:#202124; white-space:nowrap; }
+
   /* ===== 参加方法CTAの無効状態（対面／オンラインどちらかが不可の時） ===== */
   .cta-disabled{
     background:#E8EAED !important;
@@ -771,6 +784,11 @@ window.EVENT_CONFIG = {
             <i id="format-badge-icon" data-lucide="users" class="w-3.5 h-3.5"></i>
             <span id="format-badge-text">会場で対面開催</span>
           </span>
+          <span id="special-badge" class="hidden inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                style="background:#FBBC05; color:#202124;">
+            <i data-lucide="star" class="w-3.5 h-3.5"></i>
+            特別会
+          </span>
         </div>
 
         <h1 class="hero-title mb-6">
@@ -842,6 +860,12 @@ window.EVENT_CONFIG = {
       <div class="lg:col-span-5" data-anim="right">
         <div class="card p-8 md:p-10 relative overflow-hidden" style="border-color:#C5D9FC; box-shadow:0 4px 24px rgba(66,133,244,.12);">
           <div class="absolute -top-20 -right-20 w-48 h-48 rounded-full opacity-20 blur-3xl" style="background:#4285F4"></div>
+
+          <!-- 複数の回を同時受付している時だけ表示：回の切替 -->
+          <div id="event-tabs" class="hidden mb-5">
+            <div class="text-xs font-bold mb-2" style="color:var(--fg-dim);">参加する回を選んでください</div>
+            <div class="event-picker" data-event-picker></div>
+          </div>
 
           <div class="flex items-center justify-between mb-6">
             <span class="eyebrow">Live availability</span>
@@ -1034,6 +1058,10 @@ window.EVENT_CONFIG = {
         </div>
         <div class="grid md:grid-cols-2 gap-6">
           <div>
+            <div id="venue-special-note" class="hidden mb-3 rounded-lg px-3 py-2 text-xs font-bold"
+                 style="background:#FFF8E1; border:1px solid #FBBC05; color:#202124;">
+              ⚠ この回は、いつもと会場が異なります。お間違えのないようご注意ください。
+            </div>
             <div class="font-display text-xl font-semibold mb-2" id="venue-name">—</div>
             <div class="text-sm leading-relaxed mb-4" style="color:var(--fg-dim);" id="venue-address">—</div>
             <a id="map-link" target="_blank" rel="noopener" href="#" class="btn-ghost inline-flex items-center gap-2 px-4 py-2.5 text-xs" style="border-radius:24px;">
@@ -1251,6 +1279,14 @@ window.EVENT_CONFIG = {
       <!-- 参加方法：開催形式に応じて自動セット（対面 / オンライン） -->
       <input type="hidden" name="joinMode" id="joinMode-input" value="対面" />
 
+      <!-- 複数の回を同時受付している時だけ表示：申込む回の選択 -->
+      <div id="form-event-picker" class="hidden">
+        <label class="flex items-center gap-1 text-sm font-medium mb-2">
+          <span>参加する回</span><span class="text-xs" style="color:var(--danger);">*</span>
+        </label>
+        <div class="event-picker" data-event-picker></div>
+      </div>
+
       <div class="grid sm:grid-cols-2 gap-5">
         <div class="sm:col-span-2">
           <label class="flex items-center gap-1 text-sm font-medium mb-2">
@@ -1398,6 +1434,13 @@ window.EVENT_CONFIG = {
         <div id="consent-error" class="hidden mt-3 text-xs font-bold" style="color:var(--danger);">
           ⚠ すべての項目に同意（チェック）が必要です。
         </div>
+      </div>
+
+      <!-- 申込む回の確認（会場・時間の取り違え防止） -->
+      <div id="form-event-summary" class="hidden rounded-xl px-4 py-3 text-sm"
+           style="background:var(--bg-2); border:1px solid var(--line);">
+        <div class="text-xs font-bold mb-1" style="color:var(--fg-mute);">お申込みの回</div>
+        <div id="form-event-summary-text" class="font-bold leading-relaxed" style="color:var(--fg);"></div>
       </div>
 
       <div class="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1814,25 +1857,23 @@ window.EVENT_CONFIG = {
   }
 
   // 開催スケジュール（次回／次々回／その次）を描画
+  const esc = t => String(t || "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  const shortDate = s => String((s && s.dateLabel) || "").replace(/^\d+年/, "");
   function renderSchedule(list) {
-    const SLOTS = [
-      { key:"次回",   label:"次回",   sub:"申込受付中" },
-      { key:"次々回", label:"次々回", sub:"" },
-      { key:"その次", label:"その次", sub:"" }
-    ];
+    const SLOTS = [ { key:"次回", label:"次回" }, { key:"次々回", label:"次々回" }, { key:"その次", label:"その次" } ];
     const bySlot = {};
     (list || []).forEach(s => { if (s && s.slot) bySlot[s.slot] = s; });
-    const esc = t => String(t || "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
     const badge = (fmt, small) => {
-      if (fmt === "オンライン") return `<span class="inline-flex items-center gap-1 ${small?"px-2 py-0.5 text-[10px]":"px-2.5 py-1 text-xs"} rounded-full font-bold whitespace-nowrap" style="background:linear-gradient(135deg,#4285F4,#34A853);color:#fff;"><i data-lucide="video" class="w-3 h-3"></i>Zoom</span>`;
-      if (fmt === "対面")       return `<span class="inline-flex items-center gap-1 ${small?"px-2 py-0.5 text-[10px]":"px-2.5 py-1 text-xs"} rounded-full font-bold whitespace-nowrap" style="background:#FEF2F0;color:#EA4335;border:1px solid #F8D2CC;"><i data-lucide="map-pin" class="w-3 h-3"></i>対面</span>`;
-      return `<span class="inline-flex items-center ${small?"px-2 py-0.5 text-[10px]":"px-2.5 py-1 text-xs"} rounded-full font-bold whitespace-nowrap" style="background:#F1F3F4;color:#9AA0A6;">形式未定</span>`;
+      const sz = small ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs";
+      if (fmt === "オンライン") return `<span class="inline-flex items-center gap-1 ${sz} rounded-full font-bold whitespace-nowrap" style="background:linear-gradient(135deg,#4285F4,#34A853);color:#fff;"><i data-lucide="video" class="w-3 h-3"></i>Zoom</span>`;
+      if (fmt === "対面")       return `<span class="inline-flex items-center gap-1 ${sz} rounded-full font-bold whitespace-nowrap" style="background:#FEF2F0;color:#EA4335;border:1px solid #F8D2CC;"><i data-lucide="map-pin" class="w-3 h-3"></i>対面</span>`;
+      return `<span class="inline-flex items-center ${sz} rounded-full font-bold whitespace-nowrap" style="background:#F1F3F4;color:#9AA0A6;">形式未定</span>`;
     };
-    const slotPill = (s, small) => {
-      const isNext = s.key === "次回";
-      const st = isNext ? "background:#34A853;color:#fff;" : "background:#E8EAED;color:#5F6368;";
+    const slotPill = (s, v, small) => {
+      const st = v.open ? "background:#34A853;color:#fff;" : "background:#E8EAED;color:#5F6368;";
       return `<span class="inline-flex items-center justify-center ${small?"w-14 text-[11px] py-0.5":"w-16 text-xs py-1"} rounded-md font-bold flex-shrink-0" style="${st}">${s.label}</span>`;
     };
+    const special = v => v.special ? '<span class="tag-special">特別会</span>' : "";
 
     // コンパクト（ヒーロー横）
     const mini = document.getElementById("schedule-mini");
@@ -1840,9 +1881,9 @@ window.EVENT_CONFIG = {
       mini.innerHTML = SLOTS.map((s, i) => {
         const v = bySlot[s.key] || {};
         return `<div class="flex items-center gap-2 py-1.5 ${i ? "border-t border-dashed" : ""}" style="border-color:var(--line);">
-          ${slotPill(s, true)}
+          ${slotPill(s, v, true)}
           <span class="text-sm font-bold flex-1 min-w-0 truncate" style="color:${v.dateLabel ? "var(--fg)" : "var(--fg-mute)"};">${esc(v.dateLabel || "調整中")}</span>
-          ${v.dateLabel ? badge(v.format, true) : ""}
+          ${special(v)}${v.dateLabel ? badge(v.format, true) : ""}
         </div>`;
       }).join("");
     }
@@ -1852,51 +1893,163 @@ window.EVENT_CONFIG = {
     if (full) {
       full.innerHTML = SLOTS.map(s => {
         const v = bySlot[s.key] || {};
-        const isNext = s.key === "次回";
+        const showPlace = v.dateLabel && (v.special || v.customTime || v.customVenue);
+        const place = showPlace
+          ? `<div class="text-sm mt-1 font-bold" style="color:var(--fg);">${esc(v.time || "")}${v.format !== "オンライン" && v.venue ? "　会場：" + esc(v.venue) : ""}</div>` : "";
         return `<div class="rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3"
-                     style="background:${isNext ? "linear-gradient(135deg,rgba(52,168,83,.08),rgba(66,133,244,.06))" : "var(--bg-2)"};
-                            border:1px solid ${isNext ? "rgba(52,168,83,.4)" : "var(--line)"};">
+                     style="background:${v.open ? "linear-gradient(135deg,rgba(52,168,83,.08),rgba(66,133,244,.06))" : "var(--bg-2)"};
+                            border:1px solid ${v.open ? "rgba(52,168,83,.4)" : "var(--line)"};">
           <div class="flex items-center gap-2">
-            ${slotPill(s, false)}
-            ${s.sub ? `<span class="text-[11px] font-bold" style="color:#34A853;">${s.sub}</span>` : ""}
+            ${slotPill(s, v, false)}
+            ${v.open ? '<span class="text-[11px] font-bold whitespace-nowrap" style="color:#34A853;">申込受付中</span>' : ""}
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="font-display text-lg sm:text-xl font-bold" style="color:${v.dateLabel ? "var(--fg)" : "var(--fg-mute)"};">${esc(v.dateLabel || "調整中")}</span>
-              ${v.dateLabel ? badge(v.format, false) : ""}
+              ${special(v)}${v.dateLabel ? badge(v.format, false) : ""}
             </div>
+            ${place}
             ${v.theme ? `<div class="text-sm mt-1" style="color:var(--fg-dim);"><span class="text-xs font-bold mr-1" style="color:var(--fg-mute);">テーマ</span>${esc(v.theme)}</div>` : ""}
           </div>
-          ${isNext && v.dateLabel ? `<a href="#apply" class="btn-primary inline-flex items-center justify-center gap-1 px-4 py-2 text-xs whitespace-nowrap">申込む<i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></a>` : ""}
+          ${v.open ? `<a href="#apply" data-pick="${esc(v.date)}" class="btn-primary inline-flex items-center justify-center gap-1 px-4 py-2 text-xs whitespace-nowrap">この回に申込む<i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></a>` : ""}
         </div>`;
       }).join("");
     }
     if (window.lucide) lucide.createIcons();
   }
+
+  /* ---------- 回の選択（複数回の同時受付・特別会） ---------- */
+  let EVENTS = [];        // 申込受付中の回
+  let currentSlot = null; // 表示・申込み対象の回
+  let lastConfig = {};
+
+  // GASの古い応答（open/time/会場なし）でも動くよう、通常設定で補完
+  function normSlot(s, c, i) {
+    return Object.assign({
+      open: i === 0, special: false, customTime: false, customVenue: false,
+      time: c["開催時間"] || "", venue: c["会場名"] || "", address: c["会場住所"] || "",
+      mapUrl: c["地図リンク"] || "", mapEmbed: c["地図埋込URL"] || "",
+      capacity: Number(c["定員"]) || cfg.capacity
+    }, s);
+  }
+
+  function renderEventPickers() {
+    const multi = EVENTS.length > 1;
+    const html = EVENTS.map(v => `<button type="button" class="event-pick ${currentSlot && currentSlot.date === v.date ? "is-active" : ""}" data-pick="${esc(v.date)}">
+        <div class="event-pick__date">${esc(shortDate(v))} ${v.special ? '<span class="tag-special">特別会</span>' : ""}</div>
+        <div class="event-pick__meta">${esc(v.time || "")}<br>${v.format === "オンライン" ? "Zoom（オンライン）" : "対面：" + esc(v.venue || "")}</div>
+      </button>`).join("");
+    document.querySelectorAll("[data-event-picker]").forEach(el => { el.innerHTML = html; });
+    ["event-tabs", "form-event-picker"].forEach(id => {
+      const el = document.getElementById(id); if (el) el.classList.toggle("hidden", !multi);
+    });
+  }
+
+  function selectEvent(slot) {
+    if (!slot) return;
+    currentSlot = slot;
+    const c = lastConfig;
+    cfg.eventId  = slot.date;
+    cfg.capacity = Number(slot.capacity) || cfg.capacity;
+
+    // 日付・時間
+    $("#fact-date").textContent   = slot.dateLabel || "—";
+    $("#detail-date").textContent = slot.dateLabel || "—";
+    if (slot.time) { $("#fact-time").textContent = slot.time; $("#detail-time").textContent = slot.time; }
+
+    // テーマ（無ければ非表示）
+    const theme = /^(調整中|未定)$/.test(slot.theme || "") ? "" : (slot.theme || "");
+    [["current-theme", "theme-block"], ["form-current-theme", "form-theme-block"]].forEach(([t, b]) => {
+      const tEl = document.getElementById(t), bEl = document.getElementById(b);
+      if (!tEl || !bEl) return;
+      tEl.textContent = theme; bEl.classList.toggle("hidden", !theme);
+    });
+
+    // 会場
+    $("#venue-name").textContent    = slot.venue || "—";
+    $("#venue-address").textContent = slot.address || "";
+    if (slot.mapUrl) $("#map-link").href = slot.mapUrl;
+    const iframe = document.getElementById("map-iframe");
+    if (iframe && slot.mapEmbed && iframe.src !== slot.mapEmbed) iframe.src = slot.mapEmbed;
+    $("#venue-parking").textContent = slot.customVenue
+      ? "この会場の駐車場については、申込み完了メール等でご案内します。"
+      : (c["駐車場"] || "—");
+    const vNote = document.getElementById("venue-special-note");
+    if (vNote) vNote.classList.toggle("hidden", !slot.customVenue);
+
+    // 特別会バッジ
+    const sp = document.getElementById("special-badge");
+    if (sp) sp.classList.toggle("hidden", !slot.special);
+
+    // 形式（対面/オンライン）に応じた切替
+    applyEventFormat(slot.format || "対面", c);
+    updateFormatCtas();
+
+    // 申込みフォームの確認表示
+    const sum = document.getElementById("form-event-summary"), sumT = document.getElementById("form-event-summary-text");
+    if (sum && sumT) {
+      sumT.innerHTML = `${esc(slot.dateLabel)}　${esc(slot.time || "")}${slot.special ? ' <span class="tag-special">特別会</span>' : ""}<br>` +
+        (slot.format === "オンライン" ? "オンライン（Zoom）" : "対面　会場：" + esc(slot.venue || "")) ;
+      sum.classList.remove("hidden");
+    }
+
+    renderEventPickers();
+    resetSoldOutState();
+    fetchRemainingSeats();
+  }
+
+  // ヒーローの「対面で参加する／Zoomで参加する」：受付中の回にその形式があれば有効
+  function updateFormatCtas() {
+    [["cta-offline", "cta-offline-note", "対面", "対面"], ["cta-online", "cta-online-note", "オンライン", "オンライン"]].forEach(([btnId, noteId, fmt, label]) => {
+      const btn = document.getElementById(btnId), note = document.getElementById(noteId);
+      if (!btn) return;
+      const has = EVENTS.some(v => (v.format || "対面") === fmt);
+      btn.classList.toggle("cta-disabled", !has);
+      if (has) btn.removeAttribute("aria-disabled"); else btn.setAttribute("aria-disabled", "true");
+      if (note) { note.textContent = has ? "" : `現在、${label}開催の予定はありません`; note.classList.toggle("hidden", has); }
+    });
+  }
+  ["cta-offline", "cta-online"].forEach(id => {
+    const btn = document.getElementById(id); if (!btn) return;
+    btn.addEventListener("click", () => {
+      const v = EVENTS.find(x => (x.format || "対面") === btn.dataset.ctaFormat);
+      if (v && (!currentSlot || currentSlot.date !== v.date)) selectEvent(v);
+    });
+  });
+  // 「この回に申込む」・回の切替ボタン
+  document.addEventListener("click", e => {
+    const el = e.target.closest("[data-pick]"); if (!el) return;
+    const v = EVENTS.find(x => x.date === el.dataset.pick);
+    if (v && (!currentSlot || currentSlot.date !== v.date)) selectEvent(v);
+  });
+  window.__reselect = () => { if (currentSlot) applyEventFormat(currentSlot.format || "対面", lastConfig); };
+
   // GAS応答前・失敗時も「調整中」で枠を表示しておく
   renderSchedule([]);
 
   // 開催回ごとの Event 構造化データ（検索・AI向け）をスケジュールから生成
   function injectEventJsonLd(list, c) {
-    const m = String(c["開催時間"] || "").match(/(\d{1,2}):(\d{2})\D+(\d{1,2}):(\d{2})/);
+    
     const pad = n => String(n).padStart(2, "0");
     const events = (list || []).filter(s => s && s.date).map(s0 => {
       const s = Object.assign({}, s0, { theme: /^(調整中|未定|TBD)$/.test(String(s0.theme || "").trim()) ? "" : s0.theme });
       const online = s.format === "オンライン";
+      const m = String(s.time || c["開催時間"] || "").match(/(\d{1,2}):(\d{2})\D+(\d{1,2}):(\d{2})/);
+      const venueName = s.venue || c["会場名"], venueAddr = (s.address !== undefined) ? s.address : c["会場住所"];
       const start = m ? `${s.date}T${pad(m[1])}:${m[2]}:00+09:00` : s.date;
       const end   = m ? `${s.date}T${pad(m[3])}:${m[4]}:00+09:00` : undefined;
       const ev = {
         "@type": "EducationEvent",
-        "name": `${c["タイトル"] || "Googleマップ診断会＋勉強会"}${s.theme ? "｜" + s.theme : ""}（${online ? "Zoom" : "対面"}）`,
+        "name": `${c["タイトル"] || "Googleマップ診断会＋勉強会"}${s.special ? "【特別会】" : ""}${s.theme ? "｜" + s.theme : ""}（${online ? "Zoom" : "対面"}）`,
         "description": (s.theme ? `テーマ：${s.theme}。` : "") + (c["キャッチコピー"] || ""),
         "startDate": start,
         "eventStatus": "https://schema.org/EventScheduled",
         "eventAttendanceMode": online ? "https://schema.org/OnlineEventAttendanceMode" : "https://schema.org/OfflineEventAttendanceMode",
         "location": online
           ? { "@type": "VirtualLocation", "url": "https://mapform.search-mania.net/" }
-          : { "@type": "Place", "name": c["会場名"] || "沖縄県内の会場",
+          : { "@type": "Place", "name": venueName || "沖縄県内の会場",
               "address": { "@type": "PostalAddress", "addressRegion": "沖縄県", "addressCountry": "JP",
-                           ...(c["会場住所"] && !/入力/.test(c["会場住所"]) ? { "streetAddress": c["会場住所"] } : {}) } },
+                           ...(venueAddr && !/入力/.test(venueAddr) ? { "streetAddress": venueAddr } : {}) } },
         "organizer": { "@id": "https://search-mania.net/#organization" },
         "performer": { "@id": "https://mapform.search-mania.net/#instructor" },
         "inLanguage": "ja",
@@ -1942,8 +2095,17 @@ window.EVENT_CONFIG = {
       return;
     }
     try {
-      const res  = await fetch(`${cfg.gasUrl}?action=config&eventId=${encodeURIComponent(cfg.eventId)}&t=${Date.now()}`, { cache: "no-store" });
-      const data = await res.json();
+      // GASはまれに一時的なエラーページ(HTML)を返すため、最大3回まで取得を試みる
+      let data = null;
+      for (let attempt = 0; attempt < 3 && !data; attempt++) {
+        try {
+          const res = await fetch(`${cfg.gasUrl}?action=config&t=${Date.now()}`, { cache: "no-store" });
+          const j = await res.json();
+          if (j && j.ok && j.config) data = j;
+        } catch (e) { console.warn("[config] retry", attempt + 1, e); }
+        if (!data) await new Promise(r => setTimeout(r, 1200));
+      }
+      if (!data) throw new Error("config unavailable");
       if (!data.ok || !data.config) { clearTimeout(loaderFailsafe); hidePageLoader(); return; }
       const c = data.config;
       clearTimeout(loaderFailsafe);
@@ -1980,55 +2142,41 @@ window.EVENT_CONFIG = {
         if (iframe) iframe.src = c["地図埋込URL"];
       }
 
-      // 開催スケジュール（次回／次々回／その次）— ヒーロー横の一覧と最下部の一覧を描画
+      // 開催スケジュール（次回／次々回／その次）— 一覧描画と、申込み対象の回の選択
+      lastConfig = c;
+      let sched;
       if (Array.isArray(c.schedule)) {
-        renderSchedule(c.schedule);
-        injectEventJsonLd(c.schedule, c);
+        sched = c.schedule.map((s, i) => normSlot(s, c, i));
       } else {
         // 旧GAS（schedule未対応）向けの組み立て
         const d0 = formatToJaDate(c["開催日"]);
-        let d1 = formatToJaDate(c["次々回開催日"] || c["次回開催日"]);
-        if (d1 === d0) d1 = "";
-        const t1 = (c["次々回テーマ"] || c["次回テーマ"] || "").toString().trim();
-        renderSchedule([
-          { slot:"次回",   dateLabel:d0, format:(c["開催形式"]||"").trim(), theme:(c["テーマ"]||"").trim() },
-          { slot:"次々回", dateLabel:d1, format:(c["次々回開催形式"]||"").trim(), theme: t1 === "調整中" ? "" : t1 }
-        ]);
+        sched = [ normSlot({ slot:"次回", date: c["eventId"] || "", dateLabel:d0, format:(c["開催形式"]||"").trim(), theme:(c["テーマ"]||"").trim() }, c, 0) ];
       }
+      renderSchedule(sched);
+      injectEventJsonLd(sched, c);
 
-      // 今回のテーマ（テーマが入っていれば表示、未入力なら非表示）— ヒーロー+フォーム上部
-      const themeStr = (c["テーマ"] || "").toString().trim();
-      if (themeStr) {
-        const heroTheme = document.getElementById("current-theme");
-        const heroBlock = document.getElementById("theme-block");
-        if (heroTheme && heroBlock) { heroTheme.textContent = themeStr; heroBlock.classList.remove("hidden"); }
-        const formTheme = document.getElementById("form-current-theme");
-        const formBlock = document.getElementById("form-theme-block");
-        if (formTheme && formBlock) { formTheme.textContent = themeStr; formBlock.classList.remove("hidden"); }
-      }
+      EVENTS = sched.filter(v => v.date && v.open);
+      if (!EVENTS.length) EVENTS = sched.filter(v => v.date).slice(0, 1);
 
-      // 開催形式（対面 or オンライン）— DOM切替
-      const format = (c["開催形式"] || "対面").toString().trim();
-      applyEventFormat(format, c);
-
-      // 特例告知（値があれば赤バナー表示）
-      const notice = (c["特例告知"] || "").toString().trim();
+      // 告知バナー：特例告知が優先。無ければ、受付中に特別会がある時に自動表示
+      const spEv = EVENTS.find(v => v.special);
+      const notice = (c["特例告知"] || "").toString().trim() ||
+        (spEv ? `【特別会】${shortDate(spEv)}は、いつもと会場・時間が異なります` : "");
       if (notice) {
         const noticeEl = document.getElementById("special-notice");
         const noticeText = document.getElementById("special-notice-text");
-        if (noticeEl && noticeText) {
-          noticeText.textContent = notice;
-          noticeEl.classList.remove("hidden");
-        }
+        if (noticeEl && noticeText) { noticeText.textContent = notice; noticeEl.classList.remove("hidden"); }
       }
+
+      if (EVENTS.length) selectEvent(EVENTS[0]);
+      else { applyEventFormat((c["開催形式"] || "対面").toString().trim(), c); fetchRemainingSeats(); }
 
       // 動的に内容が変わったのでScrollTriggerの位置を再計算（表示崩れ防止）
       if (window.ScrollTrigger) ScrollTrigger.refresh();
 
-      // eventIdが更新された後に残席を再取得（競合防止）
-      fetchRemainingSeats();
       hidePageLoader();
-    } catch (_) {
+    } catch (err) {
+      console.error("[config]", err);
       // GAS到達不可：「—」表示のまま残席のみ試行（古い日付を出さない）
       clearTimeout(loaderFailsafe);
       hidePageLoader();
@@ -2260,7 +2408,7 @@ window.EVENT_CONFIG = {
   }
   function animateSeatsCountdown(remaining){
     seatsNumEl.classList.remove("skeleton");
-    if(prefersReduce){ seatsNumEl.textContent=remaining; }
+    if(prefersReduce||document.hidden){ seatsNumEl.textContent=remaining; } // 非表示タブではアニメが進まないため即時反映
     else if(window.gsap){
       const obj={n:cfg.capacity};
       gsap.to(obj,{n:remaining, duration:1.4, ease:"expo.out", onUpdate:()=>{ seatsNumEl.textContent=Math.round(obj.n); }});
@@ -2278,12 +2426,21 @@ window.EVENT_CONFIG = {
     } else { stamp.style.opacity=1; }
   }
 
+  function resetSoldOutState(){
+    $("#soldout-state").classList.add("hidden");
+    $("#seats-cta").classList.remove("hidden");
+    $("#form-soldout").classList.add("hidden");
+    $("#apply-form").classList.remove("hidden");
+    $("#seats-fallback-note").classList.add("hidden");
+  }
   async function fetchRemainingSeats(){
+    const forEvent = cfg.eventId; // 取得中に回が切り替わったら、この応答は捨てる
     setSeatsDisplayLoading();
     try{
       if(!cfg.gasUrl||cfg.gasUrl.includes("XXXXX")) throw new Error("gasUrl_not_set");
       const res=await fetch(`${cfg.gasUrl}?action=count&eventId=${encodeURIComponent(cfg.eventId)}&t=${Date.now()}`,{method:"GET",cache:"no-store"});
       const data=await res.json();
+      if(forEvent!==cfg.eventId) return;
       if(data.ok){
         const remaining=Math.max(0,cfg.capacity-(data.count||0));
         animateSeatsCountdown(remaining);
@@ -2449,7 +2606,7 @@ window.EVENT_CONFIG = {
       }
       await onSubmitSuccess();
     }catch(err){ await onSubmitSuccess(); }
-    finally{ setSubmitting(false); form.reset(); }
+    finally{ setSubmitting(false); form.reset(); if (window.__reselect) window.__reselect(); }
   });
 
   async function onSubmitSuccess(){ await fetchRemainingSeats(); showThankYouModal(); }

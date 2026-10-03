@@ -48,11 +48,17 @@ const EVENT_COLS  = ["✓","申込日時","開催ID","参加方法","お名前",
 // 「次回」＝LPで申込みを受け付けている回（eventId・残席・メール・リマインドの基準）
 // ─────────────────────────────────────────────
 const SCHEDULE_SLOTS = [
-  { key: "次回",   label: "次回（申込受付中）" },
+  { key: "次回",   label: "次回" },
   { key: "次々回", label: "次々回" },
   { key: "その次", label: "その次" }
 ];
 const FORMAT_OPTIONS = ["対面", "オンライン"];
+// スケジュール表の列：回｜開催日｜開催形式｜テーマ｜受付｜種別｜開催時間｜会場名｜会場住所｜定員
+// 受付〜定員は空欄OK（受付：次回=受付中・他=予告のみ ／ 時間・会場・定員：下段の通常設定を使用）
+const SCHED_HEADERS = ["回", "開催日", "開催形式", "テーマ", "受付", "種別", "開催時間", "会場名", "会場住所", "定員"];
+const SCHED_WIDTH   = SCHED_HEADERS.length;
+const OPEN_OPTIONS  = ["受付中", "予告のみ"];
+const KIND_OPTIONS  = ["通常", "特別会"];
 
 const DEFAULT_CONFIG_SECTIONS = [
   { title: "【基本情報】", rows: [
@@ -166,13 +172,19 @@ function sendTestEmail() {
 function readConfigSheetRaw_(sheet) {
   var out = { schedule: {}, kv: {} };
   if (!sheet || sheet.getLastRow() < 1) return out;
-  var rows = sheet.getRange(1, 1, sheet.getLastRow(), 4).getValues();
+  var rows = sheet.getRange(1, 1, sheet.getLastRow(), SCHED_WIDTH).getValues();
+  var str = function(v) { return (v === null || v === undefined) ? "" : v.toString().trim(); };
   rows.forEach(function(r) {
-    var a = (r[0] || "").toString().trim();
+    var a = str(r[0]);
     if (!a || a.charAt(0) === "【" || a === "回" || a === "項目") return;
     var slot = slotKeyOf_(a);
     if (slot) {
-      out.schedule[slot] = { date: r[1], format: (r[2] || "").toString().trim(), theme: (r[3] || "").toString().trim() };
+      out.schedule[slot] = {
+        date: r[1], format: str(r[2]), theme: str(r[3]),
+        open: str(r[4]), kind: str(r[5]),
+        time: (r[6] instanceof Date) ? Utilities.formatDate(r[6], "Asia/Tokyo", "H:mm") : str(r[6]),
+        venue: str(r[7]), address: str(r[8]), capacity: str(r[9])
+      };
     } else {
       out.kv[a] = r[1];
     }
@@ -193,29 +205,35 @@ function writeConfigLayout_(sheet, sched, kv) {
   sheet.clear();
   sheet.getDataRange().clearDataValidations();
   sheet.setFrozenRows(0);
+  var W = SCHED_WIDTH;
+  var dv = function(list) { return SpreadsheetApp.newDataValidation().requireValueInList(list, true).setAllowInvalid(true).build(); };
 
   var row = 1;
   // ── スケジュール表 ──
-  sheet.getRange(row, 1, 1, 4).setValues([["【開催スケジュール】 次回＝LPで申込受付中の回", "", "", ""]]);
-  sheet.getRange(row, 1, 1, 4).merge().setFontWeight("bold").setBackground("#202124").setFontColor("#FFFFFF");
+  sheet.getRange(row, 1).setValue("【開催スケジュール】 E〜J列は空欄OK（受付：空欄なら次回のみ受付中 ／ 時間・会場・定員：空欄なら下の通常設定）");
+  sheet.getRange(row, 1, 1, W).merge().setFontWeight("bold").setBackground("#202124").setFontColor("#FFFFFF");
   row++;
-  sheet.getRange(row, 1, 1, 4).setValues([["回", "開催日", "開催形式", "テーマ"]])
+  sheet.getRange(row, 1, 1, W).setValues([SCHED_HEADERS])
        .setFontWeight("bold").setBackground("#4285F4").setFontColor("#FFFFFF");
+  sheet.getRange(row, 5, 1, W - 4).setBackground("#7C3AED"); // 任意入力の列は紫で区別
   row++;
   var schedStart = row;
   SCHEDULE_SLOTS.forEach(function(s) {
     var v = sched[s.key] || {};
-    sheet.getRange(row, 1, 1, 4).setValues([[s.label, v.date || "", v.format || "", v.theme || ""]]);
+    sheet.getRange(row, 1, 1, W).setValues([[s.label, v.date || "", v.format || "", v.theme || "",
+      v.open || "", v.kind || "", v.time || "", v.venue || "", v.address || "", v.capacity || ""]]);
     row++;
   });
-  // 日付＝カレンダー入力 / 形式＝プルダウン
   var n = SCHEDULE_SLOTS.length;
   sheet.getRange(schedStart, 2, n, 1).setNumberFormat("yyyy/MM/dd")
        .setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).build());
-  sheet.getRange(schedStart, 3, n, 1)
-       .setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(FORMAT_OPTIONS, true).setAllowInvalid(true).build());
-  sheet.getRange(schedStart, 1, 1, 4).setBackground("#E6F4EA").setFontWeight("bold");   // 次回＝緑で強調
-  sheet.getRange(schedStart + 1, 1, n - 1, 4).setBackground("#F8F9FA");
+  sheet.getRange(schedStart, 3, n, 1).setDataValidation(dv(FORMAT_OPTIONS));
+  sheet.getRange(schedStart, 5, n, 1).setDataValidation(dv(OPEN_OPTIONS));
+  sheet.getRange(schedStart, 6, n, 1).setDataValidation(dv(KIND_OPTIONS));
+  sheet.getRange(schedStart, 7, n, 1).setNumberFormat("@"); // 時間は文字列のまま（例：19:00 〜 20:30）
+  sheet.getRange(schedStart, 1, 1, W).setBackground("#E6F4EA");
+  sheet.getRange(schedStart + 1, 1, n - 1, W).setBackground("#F8F9FA");
+  sheet.getRange(schedStart, 1, n, 1).setFontWeight("bold");
   row++; // 空行
 
   // ── 項目｜値 セクション ──
@@ -229,13 +247,11 @@ function writeConfigLayout_(sheet, sched, kv) {
       sheet.getRange(row, 1, 1, 2).setValues([[key, val]]);
       row++;
     });
-    row++; // セクション間の空行
+    row++;
   });
 
-  sheet.setColumnWidth(1, 200);
-  sheet.setColumnWidth(2, 360);
-  sheet.setColumnWidth(3, 110);
-  sheet.setColumnWidth(4, 320);
+  var widths = [150, 300, 100, 260, 90, 80, 140, 200, 260, 60];
+  widths.forEach(function(w, i) { sheet.setColumnWidth(i + 1, w); });
 }
 
 // 旧レイアウト → 新レイアウトへ値を引き継いで作り直す（開催別タブ・申込一覧には触れない）
@@ -267,7 +283,9 @@ function rebuildConfigSheet() {
 
   writeConfigLayout_(sheet, sched, kv);
   ui.alert("✅ 設定シートを作り直しました。\n\n" +
-    "上の表の「次回」がLPで申込受付中の回です。\n" +
+    "上の表に 次回／次々回／その次 を入力します。\n" +
+    "・特別会：その行の「種別」を特別会にして、時間・会場名・住所を入力\n" +
+    "・2つの回を同時に受け付ける：その行の「受付」を受付中に\n\n" +
     "開催が終わったら メニュー「⏭ 開催後：スケジュールを1つ繰り上げ」で\n次々回→次回、その次→次々回 に自動で移動できます。");
 }
 
@@ -276,7 +294,7 @@ function shiftSchedule() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var ui = SpreadsheetApp.getUi();
   var sheet = ss.getSheetByName(CONFIG_SHEET);
-  var rows = sheet.getRange(1, 1, sheet.getLastRow(), 4).getValues();
+  var rows = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues();
   var idx = {};
   rows.forEach(function(r, i) {
     var k = slotKeyOf_((r[0] || "").toString().trim());
@@ -286,23 +304,26 @@ function shiftSchedule() {
     ui.alert("スケジュール表が見つかりません。先に「♻ 設定シートを新レイアウトに作り直す」を実行してください。");
     return;
   }
-  var cur = sheet.getRange(idx["次回"], 2, 1, 3).getValues()[0];
-  var nx  = sheet.getRange(idx["次々回"], 2, 1, 3).getValues()[0];
-  var nx2 = sheet.getRange(idx["その次"], 2, 1, 3).getValues()[0];
+  var W = SCHED_WIDTH - 1; // 回ラベル以外
+  var cur = sheet.getRange(idx["次回"], 2, 1, W).getValues()[0];
+  var nx  = sheet.getRange(idx["次々回"], 2, 1, W).getValues()[0];
+  var nx2 = sheet.getRange(idx["その次"], 2, 1, W).getValues()[0];
   var ok = ui.alert("スケジュールを繰り上げます",
     "次回：" + fmtSlot_(cur) + "  → 終了扱い\n" +
-    "次々回：" + fmtSlot_(nx) + "  → 次回（申込受付開始）\n" +
-    "その次：" + fmtSlot_(nx2) + "  → 次々回\n\n実行しますか？", ui.ButtonSet.OK_CANCEL);
+    "次々回：" + fmtSlot_(nx) + "  → 次回\n" +
+    "その次：" + fmtSlot_(nx2) + "  → 次々回\n\n" +
+    "（受付・種別・時間・会場・定員の列も一緒に繰り上がります）\n\n実行しますか？", ui.ButtonSet.OK_CANCEL);
   if (ok !== ui.Button.OK) return;
-  sheet.getRange(idx["次回"], 2, 1, 3).setValues([nx]);
-  sheet.getRange(idx["次々回"], 2, 1, 3).setValues([nx2]);
-  sheet.getRange(idx["その次"], 2, 1, 3).setValues([["", "", ""]]);
+  var blank = []; for (var i = 0; i < W; i++) blank.push("");
+  sheet.getRange(idx["次回"], 2, 1, W).setValues([nx]);
+  sheet.getRange(idx["次々回"], 2, 1, W).setValues([nx2]);
+  sheet.getRange(idx["その次"], 2, 1, W).setValues([blank]);
   ui.alert("✅ 繰り上げました。「その次」に新しい予定を入れてください。");
 }
 
 function fmtSlot_(v) {
   var d = parseDate_(v[0]);
-  return (d ? Utilities.formatDate(d, "Asia/Tokyo", "M/d") : "未定") + (v[1] ? "（" + v[1] + "）" : "");
+  return (d ? Utilities.formatDate(d, "Asia/Tokyo", "M/d") : "未定") + (v[1] ? "（" + v[1] + "）" : "") + (v[4] === "特別会" ? "【特別会】" : "");
 }
 
 
@@ -314,9 +335,9 @@ function doPost(e) {
     var data    = JSON.parse(e.postData.contents);
     var eventId = (data.eventId || "_unknown").toString();
     var ss      = SpreadsheetApp.getActiveSpreadsheet();
-    var config  = readConfig_(ss);
-    // 参加方法：フォーム側の送信値を優先、無ければ設定シートの開催形式を採用
-    var joinMode = (data.joinMode || config["開催形式"] || "対面").toString();
+    var config  = configForEvent_(ss, eventId);
+    // 参加方法：その回の開催形式を優先（無ければフォーム送信値）
+    var joinMode = (config["開催形式"] || data.joinMode || "対面").toString();
 
     var dataRow = [
       new Date(),
@@ -424,7 +445,7 @@ function setupSheets() {
 // 申込み完了メール
 // =============================================
 function sendConfirmationEmail_(data, ss) {
-  var config   = readConfig_(ss);
+  var config   = configForEvent_(ss, (data.eventId || "").toString());
   var isOnline = (config["開催形式"] === "オンライン");
   var joinMode = (data.joinMode || config["開催形式"] || "対面");
 
@@ -446,7 +467,10 @@ function sendConfirmationEmail_(data, ss) {
     ? "参加形式　：オンライン（Zoom）\n" +
       (zoomUrl ? "参加URL　　：" + zoomUrl + "\n" : "") +
       (zoomId  ? "ミーティングID：" + zoomId + "\n" : "")
-    : "参加形式　：対面\n会　場　　：" + (config["会場名"] || "") + "\n";
+    : "参加形式　：対面" + (config["特別会"] ? "【特別会：いつもと会場・時間が異なります】" : "") + "\n" +
+      "会　場　　：" + (config["会場名"] || "") + "\n" +
+      (config["会場住所"] && !/入力/.test(config["会場住所"]) ? "住　所　　：" + config["会場住所"] + "\n" : "") +
+      (config["地図リンク"] ? "地　図　　：" + config["地図リンク"] + "\n" : "");
 
   var closing = isOnline
     ? "■ 参加方法\n" +
@@ -491,14 +515,15 @@ function sendConfirmationEmail_(data, ss) {
 // 管理者への新規申込み通知
 // =============================================
 function sendAdminNotification_(data, ss) {
-  var config = readConfig_(ss);
+  var config = configForEvent_(ss, (data.eventId || "").toString());
   MailApp.sendEmail({
     to:      ADMIN_EMAIL,
     subject: "【新規申込み】" + (data.name || "（名前未入力）") + " 様 ／ " + (config["タイトル"] || "MEO Workshop"),
     body:
       "新規申込みがありました。\n\n" +
       "━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-      "参加方法　：" + (data.joinMode || config["開催形式"] || "対面") + "\n" +
+      "開催回　　：" + (config["開催日"] || data.eventId || "") + " " + (config["開催時間"] || "") + (config["特別会"] ? "【特別会】" : "") + "\n" +
+      "参加方法　：" + (config["開催形式"] || data.joinMode || "対面") + "\n" +
       "お名前　　：" + (data.name     || "") + "\n" +
       "メール　　：" + (data.email    || "") + "\n" +
       "電話番号　：" + (data.phone    || "") + "\n" +
@@ -521,24 +546,23 @@ function sendReminders() {
   in3Days.setDate(today.getDate() + 3);
   var target  = Utilities.formatDate(in3Days, "Asia/Tokyo", "yyyy-MM-dd");
 
-  var ss      = SpreadsheetApp.getActiveSpreadsheet();
-  var config  = readConfig_(ss);
+  var ss  = SpreadsheetApp.getActiveSpreadsheet();
+  var cfg = readConfig_(ss);
 
-  // 設定シートの eventId から日付を自動取得（先頭10文字 = YYYY-MM-DD）
-  var eventId   = (config["eventId"] || "").trim();
-  var eventDate = eventId.substring(0, 10);
-  if (!eventId || eventDate !== target) return;
-
-  var sheet = ss.getSheetByName(eventId);
-  if (!sheet || sheet.getLastRow() < 2) return;
-
-  var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, EVENT_COLS.length).getValues();
-  rows.forEach(function(row) {
-    if (row[0] !== true) return;
-    var email = row[5]; // メールアドレス（F列）※参加方法列追加で1つ右にシフト
-    var name  = row[4]; // お名前（E列）
-    if (!email) return;
-    sendReminderEmail_(name, email, config);
+  // スケジュール表のうち「3日後が開催日」の回すべてに送信（同時受付の特別会にも対応）
+  (cfg.schedule || []).forEach(function(slot) {
+    if (!slot.date || slot.date !== target) return;
+    var sheet = ss.getSheetByName(slot.date);
+    if (!sheet || sheet.getLastRow() < 2) return;
+    var config = configForEvent_(ss, slot.date);
+    var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, EVENT_COLS.length).getValues();
+    rows.forEach(function(row) {
+      if (row[0] !== true) return;
+      var email = row[5]; // メールアドレス（F列）
+      var name  = row[4]; // お名前（E列）
+      if (!email) return;
+      sendReminderEmail_(name, email, config);
+    });
   });
 }
 
@@ -657,48 +681,78 @@ function readConfig_(ss) {
   var raw = readConfigSheetRaw_(sheet);
   var cfg = {};
 
-  // 項目｜値（Dateは文字列化）
   Object.keys(raw.kv).forEach(function(k) {
     var v = raw.kv[k];
     cfg[k] = (v === undefined || v === null) ? "" : (v instanceof Date ? formatJpDate_(v) : v.toString());
   });
 
-  // スケジュール表（次回・次々回・その次）
+  // スケジュール表（次回・次々回・その次）。時間・会場・定員は行の上書き値があればそれ、無ければ通常設定
   var schedule = [];
   SCHEDULE_SLOTS.forEach(function(s) {
     var v = raw.schedule[s.key] || {};
     var d = parseDate_(v.date);
+    var customVenue = !!v.venue;
+    var venue   = customVenue ? v.venue : (cfg["会場名"] || "");
+    var address = customVenue ? (v.address || "") : (cfg["会場住所"] || "");
+    var q = encodeURIComponent((venue + " " + address).trim());
+    var open = v.open ? (v.open === "受付中") : (s.key === "次回");
     schedule.push({
-      slot:      s.key,
-      date:      d ? Utilities.formatDate(d, "Asia/Tokyo", "yyyy-MM-dd") : "",
-      dateLabel: d ? formatJpDate_(d) : "",
-      format:    FORMAT_OPTIONS.indexOf(v.format) !== -1 ? v.format : "",
-      theme:     v.theme || ""
+      slot:        s.key,
+      date:        d ? Utilities.formatDate(d, "Asia/Tokyo", "yyyy-MM-dd") : "",
+      dateLabel:   d ? formatJpDate_(d) : "",
+      format:      FORMAT_OPTIONS.indexOf(v.format) !== -1 ? v.format : "",
+      theme:       v.theme || "",
+      open:        !!(d && open),
+      special:     v.kind === "特別会",
+      time:        v.time || cfg["開催時間"] || "",
+      customTime:  !!v.time,
+      venue:       venue,
+      address:     address,
+      customVenue: customVenue,
+      mapUrl:      customVenue ? ("https://www.google.com/maps/search/?api=1&query=" + q) : (cfg["地図リンク"] || ""),
+      mapEmbed:    customVenue ? ("https://www.google.com/maps?q=" + q + "&output=embed") : (cfg["地図埋込URL"] || ""),
+      capacity:    Number(v.capacity) || Number(cfg["定員"]) || 10
     });
   });
 
   if (raw.schedule["次回"]) {
-    // 新レイアウト：既存処理（メール・リマインド・残席）が使うキーを「次回」から生成
     var cur = schedule[0];
     cfg["開催日"]   = cur.dateLabel;
     cfg["eventId"]  = cur.date;
     cfg["開催形式"] = cur.format || "対面";
     cfg["テーマ"]   = cur.theme;
   } else {
-    // 旧レイアウト（作り直し前）の互換：旧項目からスケジュールを組み立てる
+    // 旧レイアウト（作り直し前）の互換
     var d0 = parseDate_(raw.kv["開催日"]);
     if (d0) { cfg["開催日"] = formatJpDate_(d0); cfg["eventId"] = Utilities.formatDate(d0, "Asia/Tokyo", "yyyy-MM-dd"); }
-    var d1 = parseDate_(raw.kv["次々回開催日"]) || parseDate_(raw.kv["次回開催日"]);
-    if (d1 && d0 && d1.getTime() === d0.getTime()) d1 = null;
-    var t1 = (raw.kv["次々回テーマ"] || raw.kv["次回テーマ"] || "").toString().trim();
-    var f1 = (raw.kv["次々回開催形式"] || "").toString().trim();
-    schedule[0] = { slot:"次回", date: d0 ? cfg["eventId"] : "", dateLabel: d0 ? cfg["開催日"] : "",
-                    format: (raw.kv["開催形式"] || "").toString().trim(), theme: (raw.kv["テーマ"] || "").toString().trim() };
-    schedule[1] = { slot:"次々回", date: d1 ? Utilities.formatDate(d1, "Asia/Tokyo", "yyyy-MM-dd") : "", dateLabel: d1 ? formatJpDate_(d1) : "",
-                    format: FORMAT_OPTIONS.indexOf(f1) !== -1 ? f1 : "", theme: t1 === "調整中" ? "" : t1 };
+    schedule[0].date = cfg["eventId"] || ""; schedule[0].dateLabel = cfg["開催日"] || "";
+    schedule[0].format = (raw.kv["開催形式"] || "").toString().trim();
+    schedule[0].theme = (raw.kv["テーマ"] || "").toString().trim();
+    schedule[0].open = !!schedule[0].date;
   }
   cfg.schedule = schedule;
   return cfg;
+}
+
+// 指定した開催ID（yyyy-MM-dd）の回に合わせた設定を返す（メール・リマインド用）
+function configForEvent_(ss, eventId) {
+  var cfg = readConfig_(ss);
+  var slot = null;
+  (cfg.schedule || []).forEach(function(s) { if (s.date && s.date === eventId) slot = s; });
+  if (!slot) return cfg;
+  var c = {};
+  Object.keys(cfg).forEach(function(k) { c[k] = cfg[k]; });
+  c["開催日"]     = slot.dateLabel;
+  c["eventId"]    = slot.date;
+  c["開催形式"]   = slot.format || "対面";
+  c["テーマ"]     = slot.theme;
+  c["開催時間"]   = slot.time;
+  c["会場名"]     = slot.venue;
+  c["会場住所"]   = slot.address;
+  c["地図リンク"] = slot.mapUrl;
+  c["定員"]       = String(slot.capacity);
+  c["特別会"]     = slot.special ? "1" : "";
+  return c;
 }
 
 // 値（Date型/文字列）を Date に変換。失敗時は null
