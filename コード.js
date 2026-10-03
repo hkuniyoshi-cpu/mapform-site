@@ -55,7 +55,7 @@ const SCHEDULE_SLOTS = [
 const FORMAT_OPTIONS = ["対面", "オンライン"];
 // スケジュール表の列：回｜開催日｜開催形式｜テーマ｜受付｜種別｜開催時間｜会場名｜会場住所｜定員
 // 受付〜定員は空欄OK（受付：次回=受付中・他=予告のみ ／ 時間・会場・定員：下段の通常設定を使用）
-const SCHED_HEADERS = ["回", "開催日", "開催形式", "テーマ", "受付", "種別", "開催時間", "会場名", "会場住所", "定員"];
+const SCHED_HEADERS = ["回", "開催日", "開催形式", "テーマ", "受付", "種別", "開催時間", "会場名", "会場住所", "定員", "駐車場案内", "案内画像URL"];
 const SCHED_WIDTH   = SCHED_HEADERS.length;
 const OPEN_OPTIONS  = ["受付中", "予告のみ"];
 const KIND_OPTIONS  = ["通常", "特別会"];
@@ -101,6 +101,7 @@ function onOpen() {
     .addSeparator()
     .addItem("📧 送信元エイリアスをチェック", "checkSenderAlias")
     .addItem("📧 テストメール送信（自分宛）", "sendTestEmail")
+    .addItem("📎 案内画像つき申込み完了メールをテスト送信（自分宛）", "sendGuideImageTestEmail")
     .addToUi();
 }
 
@@ -183,7 +184,8 @@ function readConfigSheetRaw_(sheet) {
         date: r[1], format: str(r[2]), theme: str(r[3]),
         open: str(r[4]), kind: str(r[5]),
         time: (r[6] instanceof Date) ? Utilities.formatDate(r[6], "Asia/Tokyo", "H:mm") : str(r[6]),
-        venue: str(r[7]), address: str(r[8]), capacity: str(r[9])
+        venue: str(r[7]), address: str(r[8]), capacity: str(r[9]),
+        parking: str(r[10]), guideImage: str(r[11])
       };
     } else {
       out.kv[a] = r[1];
@@ -213,7 +215,7 @@ function writeConfigLayout_(sheet, sched, kv) {
 
   var row = 1;
   // ── スケジュール表 ──
-  sheet.getRange(row, 1).setValue("【開催スケジュール】 E〜J列は空欄OK（受付：空欄なら次回のみ受付中 ／ 時間・会場・定員：空欄なら下の通常設定）");
+  sheet.getRange(row, 1).setValue("【開催スケジュール】 E〜L列は空欄OK（受付：空欄なら次回のみ受付中 ／ 時間・会場・定員・駐車場案内：空欄なら下の通常設定 ／ 案内画像URL：会場・駐車場の案内画像。ページの地図下とメール添付に使用）");
   sheet.getRange(row, 1, 1, W).merge().setFontWeight("bold").setBackground("#202124").setFontColor("#FFFFFF");
   row++;
   sheet.getRange(row, 1, 1, W).setValues([SCHED_HEADERS])
@@ -224,7 +226,8 @@ function writeConfigLayout_(sheet, sched, kv) {
   SCHEDULE_SLOTS.forEach(function(s) {
     var v = sched[s.key] || {};
     sheet.getRange(row, 1, 1, W).setValues([[s.label, v.date || "", v.format || "", v.theme || "",
-      v.open || "", v.kind || "", v.time || "", v.venue || "", v.address || "", v.capacity || ""]]);
+      v.open || "", v.kind || "", v.time || "", v.venue || "", v.address || "", v.capacity || "",
+      v.parking || "", v.guideImage || ""]]);
     row++;
   });
   var n = SCHEDULE_SLOTS.length;
@@ -253,7 +256,7 @@ function writeConfigLayout_(sheet, sched, kv) {
     row++;
   });
 
-  var widths = [150, 300, 100, 260, 90, 80, 140, 200, 260, 60];
+  var widths = [150, 300, 100, 260, 90, 80, 140, 200, 260, 60, 280, 280];
   widths.forEach(function(w, i) { sheet.setColumnWidth(i + 1, w); });
 }
 
@@ -315,7 +318,7 @@ function shiftSchedule() {
     "次回：" + fmtSlot_(cur) + "  → 終了扱い\n" +
     "次々回：" + fmtSlot_(nx) + "  → 次回\n" +
     "その次：" + fmtSlot_(nx2) + "  → 次々回\n\n" +
-    "（受付・種別・時間・会場・定員の列も一緒に繰り上がります）\n\n実行しますか？", ui.ButtonSet.OK_CANCEL);
+    "（受付・種別・時間・会場・定員・駐車場案内・案内画像の列も一緒に繰り上がります）\n\n実行しますか？", ui.ButtonSet.OK_CANCEL);
   if (ok !== ui.Button.OK) return;
   var blank = []; for (var i = 0; i < W; i++) blank.push("");
   sheet.getRange(idx["次回"], 2, 1, W).setValues([nx]);
@@ -473,7 +476,9 @@ function sendConfirmationEmail_(data, ss) {
     : "参加形式　：対面" + (config["特別会"] ? "【特別会：いつもと会場・時間が異なります】" : "") + "\n" +
       "会　場　　：" + (config["会場名"] || "") + "\n" +
       (config["会場住所"] && !/入力/.test(config["会場住所"]) ? "住　所　　：" + config["会場住所"] + "\n" : "") +
-      (config["地図リンク"] ? "地　図　　：" + config["地図リンク"] + "\n" : "");
+      (config["地図リンク"] ? "地　図　　：" + config["地図リンク"] + "\n" : "") +
+      (config["駐車場"] ? "駐車場　　：" + config["駐車場"] + "\n" : "") +
+      (config["案内画像"] ? "案内図　　：" + config["案内画像"] + (guideImageBlob_(config["案内画像"]) ? "（このメールにも添付しています）" : "") + "\n" : "");
 
   var closing = isOnline
     ? "■ 参加方法\n" +
@@ -511,7 +516,46 @@ function sendConfirmationEmail_(data, ss) {
     deliverabilityNote +
     SENDER_EMAIL + "\n" + SENDER_NAME + "\nhttps://search-mania.net/";
 
-  MailApp.sendEmail({ to: data.email, subject: subject, body: body, name: SENDER_NAME, from: SENDER_EMAIL });
+  var mail = { to: data.email, subject: subject, body: body, name: SENDER_NAME, from: SENDER_EMAIL };
+  var att = isOnline ? null : guideImageBlob_(config["案内画像"]);
+  if (att) mail.attachments = [att];
+  MailApp.sendEmail(mail);
+}
+
+// 案内画像（会場・駐車場の案内図）を添付用に取得。取得できなければ null（メール本文のURLだけで案内）
+var GUIDE_BLOB_CACHE_ = {};
+function guideImageBlob_(url) {
+  url = (url || "").toString().trim();
+  if (!/^https:\/\//.test(url)) return null;
+  if (GUIDE_BLOB_CACHE_[url] !== undefined) return GUIDE_BLOB_CACHE_[url];
+  var blob = null;
+  try {
+    var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (res.getResponseCode() === 200 && /^image\//.test(res.getBlob().getContentType() || "")) {
+      var ext = (url.match(/\.(jpe?g|png|gif|webp)(?:\?|$)/i) || [, "jpg"])[1].toLowerCase();
+      blob = res.getBlob().setName("会場・駐車場のご案内." + ext);
+    }
+  } catch (err) { blob = null; }
+  GUIDE_BLOB_CACHE_[url] = blob;
+  return blob;
+}
+
+// 案内画像つきの申込み完了メールを自分宛に送って確認する（対面の回のうち、案内画像URLが入っている回）
+function sendGuideImageTestEmail() {
+  var ui = SpreadsheetApp.getUi();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var cfg = readConfig_(ss);
+  var slot = null;
+  (cfg.schedule || []).forEach(function(v) { if (!slot && v.date && v.guideImage && v.format !== "オンライン") slot = v; });
+  if (!slot) { ui.alert("スケジュール表の「案内画像URL」が入っている対面の回が見つかりません。"); return; }
+  try {
+    var ok = !!guideImageBlob_(slot.guideImage);
+    sendConfirmationEmail_({ name: "テスト", email: ADMIN_EMAIL, shopName: "テスト送信", eventId: slot.date, joinMode: "対面" }, ss);
+    ui.alert((ok ? "✅ " : "⚠ 画像を取得できませんでした（URLをご確認ください）。本文のみで ") +
+             ADMIN_EMAIL + " 宛に " + slot.dateLabel + " の申込み完了メールを送信しました。");
+  } catch (err) {
+    ui.alert("送信失敗：" + err.toString());
+  }
 }
 
 // =============================================
@@ -591,7 +635,9 @@ function sendReminderEmail_(name, email, config) {
       (zoomId  ? "ミーティングID：" + zoomId + "\n" : "")
     : "会　場　：" + (config["会場名"]   || "") + "\n" +
       "住　所　：" + (config["会場住所"] || "") + "\n" +
-      (config["地図リンク"] ? "地　図　：" + config["地図リンク"] + "\n" : "");
+      (config["地図リンク"] ? "地　図　：" + config["地図リンク"] + "\n" : "") +
+      (config["駐車場"] ? "駐車場　：" + config["駐車場"] + "\n" : "") +
+      (config["案内画像"] ? "案内図　：" + config["案内画像"] + (guideImageBlob_(config["案内画像"]) ? "（このメールにも添付しています）" : "") + "\n" : "");
 
   var reminderTips = isOnline
     ? "・PC・タブレット・スマホどれでも参加OK（Zoom アプリ推奨・ブラウザ参加可）\n" +
@@ -611,7 +657,10 @@ function sendReminderEmail_(name, email, config) {
     reminderTips + "\n" +
     SENDER_EMAIL + "\n" + SENDER_NAME + "\nhttps://search-mania.net/";
 
-  MailApp.sendEmail({ to: email, subject: subject, body: body, name: SENDER_NAME, from: SENDER_EMAIL });
+  var mail = { to: email, subject: subject, body: body, name: SENDER_NAME, from: SENDER_EMAIL };
+  var att = isOnline ? null : guideImageBlob_(config["案内画像"]);
+  if (att) mail.attachments = [att];
+  MailApp.sendEmail(mail);
 }
 
 // =============================================
@@ -714,7 +763,10 @@ function readConfig_(ss) {
       customVenue: customVenue,
       mapUrl:      customVenue ? ("https://www.google.com/maps/search/?api=1&query=" + q) : (cfg["地図リンク"] || ""),
       mapEmbed:    customVenue ? ("https://www.google.com/maps?q=" + q + "&output=embed") : (cfg["地図埋込URL"] || ""),
-      capacity:    Number(v.capacity) || Number(cfg["定員"]) || 10
+      capacity:    Number(v.capacity) || Number(cfg["定員"]) || 10,
+      // 駐車場案内：行に入力があればそれ。別会場で未入力なら空（通常会場の駐車場案内を出さない）
+      parking:     v.parking || (customVenue ? "" : (cfg["駐車場"] || "")),
+      guideImage:  /^https:\/\//.test(v.guideImage || "") ? v.guideImage : ""
     });
   });
 
@@ -755,6 +807,8 @@ function configForEvent_(ss, eventId) {
   c["地図リンク"] = slot.mapUrl;
   c["定員"]       = String(slot.capacity);
   c["特別会"]     = slot.special ? "1" : "";
+  c["駐車場"]     = slot.parking || "";
+  c["案内画像"]   = slot.guideImage || "";
   return c;
 }
 

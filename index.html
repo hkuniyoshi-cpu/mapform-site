@@ -118,9 +118,10 @@ window.EVENT_CONFIG = {
 
   // ページ固有のコンテンツ（スプレッドシートでは管理しない）
   schedule: [
-    { time: "14:00", title: "Googleマップ基礎講座", desc: "ローカル検索の仕組みと、見られる店舗情報の整え方" },
-    { time: "14:30", title: "セルフ診断・質疑応答", desc: "ご自身のビジネスプロフィールを開き、その場で改善ポイントを洗い出し" },
-    { time: "15:30", title: "終了", desc: "希望者は名刺交換・個別相談" }
+    // time は通常回（14:00〜15:30）の表示。min=開始からの分数、end=終了時刻。回ごとの開催時間に合わせて自動で置き換わる
+    { time: "14:00", min: 0,  title: "Googleマップ基礎講座", desc: "ローカル検索の仕組みと、見られる店舗情報の整え方" },
+    { time: "14:30", min: 30, title: "セルフ診断・質疑応答", desc: "ご自身のビジネスプロフィールを開き、その場で改善ポイントを洗い出し" },
+    { time: "15:30", end: true, title: "終了", desc: "希望者は名刺交換・個別相談" }
   ],
 
   targetIndustries: ["飲食店","美容室","エステ","小売店","ホテル","整骨院","鍼灸院","歯医者","クリニック"],
@@ -1143,6 +1144,20 @@ window.EVENT_CONFIG = {
                 title="ツボバル 地図"></iframe>
       </div>
     </div>
+
+    <!-- 会場・駐車場の案内画像（設定シートの「案内画像URL」が入っている回だけ表示） -->
+    <div id="venue-guide" class="hidden mt-6">
+      <div class="card p-5 md:p-6" style="border-color:#FBBC05;">
+        <div class="flex items-center gap-2 mb-3 flex-wrap">
+          <i data-lucide="parking-circle" class="w-5 h-5" style="color:#E37400;"></i>
+          <div class="text-sm font-bold" style="color:var(--fg);">会場・駐車場のご案内</div>
+          <span class="text-xs" style="color:var(--fg-dim);">画像をタップすると拡大します</span>
+        </div>
+        <a id="venue-guide-link" href="#" target="_blank" rel="noopener" class="block mx-auto" style="max-width:420px;">
+          <img id="venue-guide-img" alt="会場・駐車場のご案内" loading="lazy" style="width:100%; height:auto; border-radius:12px; border:1px solid var(--line);" />
+        </a>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -2042,6 +2057,23 @@ window.EVENT_CONFIG = {
     if (window.ResizeObserver) new ResizeObserver(fitNotice).observe(noticeEl);
   }
 
+  // 時間割を、選んだ回の開催時間（例「13:30~15:00」）に合わせて書き換える。読み取れない時は通常の時刻のまま
+  function updateTimeline(timeStr) {
+    const els = document.querySelectorAll("#timeline .tl-time");
+    const t = String(timeStr || "").replace(/[０-９：]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+    const m = t.match(/(\d{1,2}):(\d{2})\D+(\d{1,2}):(\d{2})/);
+    const fmt = n => Math.floor(n / 60) + ":" + String(n % 60).padStart(2, "0");
+    const start = m ? Number(m[1]) * 60 + Number(m[2]) : null, end = m ? Number(m[3]) * 60 + Number(m[4]) : null;
+    cfg.schedule.forEach((it, i) => {
+      if (!els[i]) return;
+      let v = it.time;
+      if (m && end > start) {
+        v = fmt(it.end ? end : Math.min(start + it.min, end));
+      }
+      els[i].textContent = v;
+    });
+  }
+
   function selectEvent(slot) {
     if (!slot) return;
     currentSlot = slot;
@@ -2053,6 +2085,7 @@ window.EVENT_CONFIG = {
     $("#fact-date").textContent   = slot.dateLabel || "—";
     $("#detail-date").textContent = slot.dateLabel || "—";
     if (slot.time) { $("#fact-time").textContent = slot.time; $("#detail-time").textContent = slot.time; }
+    updateTimeline(slot.time);
 
     // テーマ（無ければ非表示）
     const theme = /^(調整中|未定)$/.test(slot.theme || "") ? "" : (slot.theme || "");
@@ -2068,9 +2101,20 @@ window.EVENT_CONFIG = {
     if (slot.mapUrl) $("#map-link").href = slot.mapUrl;
     const iframe = document.getElementById("map-iframe");
     if (iframe && slot.mapEmbed && iframe.src !== slot.mapEmbed) iframe.src = slot.mapEmbed;
-    $("#venue-parking").textContent = slot.customVenue
-      ? "この会場の駐車場については、申込み完了メール等でご案内します。"
-      : (c["駐車場"] || "—");
+    $("#venue-parking").textContent = slot.parking ||
+      (slot.customVenue ? "この会場の駐車場については、申込み完了メール等でご案内します。" : (c["駐車場"] || "—"));
+    // 会場・駐車場の案内画像（その回に登録があり、対面のときだけ地図の下に表示）
+    const guide = document.getElementById("venue-guide");
+    if (guide) {
+      const url = slot.format !== "オンライン" && /^https:\/\//.test(slot.guideImage || "") ? slot.guideImage : "";
+      guide.classList.toggle("hidden", !url);
+      if (url) {
+        document.getElementById("venue-guide-link").href = url;
+        const img = document.getElementById("venue-guide-img");
+        if (img.getAttribute("src") !== url) img.src = url;
+        img.alt = (slot.venue || "会場") + "の会場・駐車場のご案内";
+      }
+    }
     const vNote = document.getElementById("venue-special-note");
     if (vNote) vNote.classList.toggle("hidden", !slot.customVenue);
 
@@ -2326,7 +2370,7 @@ window.EVENT_CONFIG = {
           ${String(i+1).padStart(2,"0")}
         </div>
       </div>
-      <div class="font-mono text-xs tracking-widest mb-1.5" style="color:${tlColors[i%4]};">${s.time}</div>
+      <div class="font-mono text-xs tracking-widest mb-1.5 tl-time" style="color:${tlColors[i%4]};">${s.time}</div>
       <div class="font-display text-xl md:text-2xl font-semibold mb-1.5">${s.title}</div>
       <div class="text-sm leading-relaxed" style="color:var(--fg-dim);">${s.desc||""}</div>`;
     tlEl.appendChild(item);
