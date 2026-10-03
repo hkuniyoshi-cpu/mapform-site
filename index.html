@@ -467,6 +467,11 @@ window.EVENT_CONFIG = {
     .consent-desc{ font-size:11.5px; }
   }
 
+  /* ===== 横はみ出し防止 =====
+     グリッドの子は初期値だと「中身の最小幅」より縮まないため、折り返せない行が1つあるだけで
+     列全体が画面幅を超え、スマホで右側が見切れる。min-width:0 で列を画面幅に収める */
+  .grid > *{ min-width:0; }
+
   /* ===== これまでの特別開催（一覧） ===== */
   .sp-arc{ display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:14px; text-decoration:none;
            background:#fff; border:1px solid var(--line); color:var(--fg); transition:border-color .15s, box-shadow .15s; }
@@ -547,10 +552,12 @@ window.EVENT_CONFIG = {
   }
 
   /* ===== 日付・時間などのファクトボックス表示（全画面幅で改行防止） ===== */
-  #fact-date, #fact-time, #fact-fee, #fact-dur,
-  #detail-date, #detail-time, .next-event-date{
+  #fact-time, #fact-fee, #fact-dur,
+  #detail-time, .next-event-date{
     white-space:nowrap;
   }
+  /* 日付は「2026年」と「10月14日（水）」の間でだけ折り返す（月日が2桁の月でも箱からはみ出さない） */
+  .date-part{ display:inline-block; white-space:nowrap; }
   /* ファクトボックス（ヒーロー下 DATE/TIME/FEE/DURATION）：
      max-w-2xl で親幅が固定されるため、viewportではなく箱幅に合わせる。
      全画面幅で「2026年8月27日（木）」が確実に収まるよう固定13pxを基準。 */
@@ -1985,9 +1992,9 @@ window.EVENT_CONFIG = {
     if (mini) {
       mini.innerHTML = SLOTS.map((s, i) => {
         const v = bySlot[s.key] || {};
-        return `<div class="flex items-center gap-2 py-1.5 ${i ? "border-t border-dashed" : ""}" style="border-color:var(--line);">
+        return `<div class="flex flex-wrap items-center gap-x-2 gap-y-1 py-1.5 ${i ? "border-t border-dashed" : ""}" style="border-color:var(--line);">
           ${slotPill(s, v, true)}
-          <span class="text-sm font-bold flex-1 min-w-0 truncate" style="color:${v.dateLabel ? "var(--fg)" : "var(--fg-mute)"};">${esc(v.dateLabel || "調整中")}</span>
+          <span class="text-sm font-bold flex-1 whitespace-nowrap" style="color:${v.dateLabel ? "var(--fg)" : "var(--fg-mute)"};">${esc(shortDate(v) || "調整中")}</span>
           ${special(v)}${v.dateLabel ? badge(v.format, true) : ""}
         </div>`;
       }).join("");
@@ -2010,7 +2017,7 @@ window.EVENT_CONFIG = {
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="font-display text-lg sm:text-xl font-bold" style="color:${v.dateLabel ? "var(--fg)" : "var(--fg-mute)"};">${esc(v.dateLabel || "調整中")}</span>
+              <span class="font-display text-lg sm:text-xl font-bold" style="color:${v.dateLabel ? "var(--fg)" : "var(--fg-mute)"};">${esc(v.dateLabel || "調整中").replace(/^(\d+年)(.+)$/, '<span class="date-part">$1</span><span class="date-part">$2</span>')}</span>
               ${special(v)}${v.dateLabel ? badge(v.format, false) : ""}
             </div>
             ${place}
@@ -2136,6 +2143,14 @@ window.EVENT_CONFIG = {
     } catch (err) { console.error("[events]", err); }
   }
 
+  // 日付を「年」と「月日（曜日）」の2つに分けて入れる（狭い画面ではその間で折り返す）
+  function setDateText(el, label) {
+    if (!el) return;
+    const m = String(label || "").match(/^(\d+年)(.+)$/);
+    if (!m) { el.textContent = label || "—"; return; }
+    el.innerHTML = `<span class="date-part">${esc(m[1])}</span><span class="date-part">${esc(m[2])}</span>`;
+  }
+
   function selectEvent(slot) {
     if (!slot) return;
     currentSlot = slot;
@@ -2144,8 +2159,8 @@ window.EVENT_CONFIG = {
     cfg.capacity = Number(slot.capacity) || cfg.capacity;
 
     // 日付・時間
-    $("#fact-date").textContent   = slot.dateLabel || "—";
-    $("#detail-date").textContent = slot.dateLabel || "—";
+    setDateText($("#fact-date"), slot.dateLabel);
+    setDateText($("#detail-date"), slot.dateLabel);
     if (slot.time) { $("#fact-time").textContent = slot.time; $("#detail-time").textContent = slot.time; }
     updateTimeline(slot.time);
 
@@ -2321,8 +2336,8 @@ window.EVENT_CONFIG = {
       // DOM更新
       if (c["開催日"]) {
         const dateStr = formatToJaDate(c["開催日"]);
-        $("#fact-date").textContent    = dateStr;
-        $("#detail-date").textContent  = dateStr;
+        setDateText($("#fact-date"), dateStr);
+        setDateText($("#detail-date"), dateStr);
       }
       if (c["開催時間"]) {
         $("#fact-time").textContent    = c["開催時間"];
@@ -2506,7 +2521,10 @@ window.EVENT_CONFIG = {
       if (el.closest("#top")) return;
       const dir = el.dataset.anim;
       const from = { opacity: 0, duration: 1.0, ease: "back.out(1.2)", delay: (i % 4) * 0.04 };
-      if (dir === "up") { from.y = 55; from.scale = 0.97; }
+      // スマホ・タブレットでは横からの登場をやめて下から出す
+      // （表示前の要素を横にずらして置くと、その分ページ幅が広がり、右側が見切れる原因になる）
+      const narrow = window.matchMedia("(max-width: 1023px)").matches;
+      if (dir === "up" || narrow) { from.y = 55; from.scale = 0.97; }
       else if (dir === "left") { from.x = -60; }
       else if (dir === "right") { from.x = 60; from.scale = 0.97; }
       gsap.from(el, { ...from, scrollTrigger: { trigger: el, start: "top 92%", once: true } });

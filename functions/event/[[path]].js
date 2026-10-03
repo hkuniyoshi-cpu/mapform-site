@@ -173,7 +173,7 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(
   a{ color:#1A73E8; }
   .top{ background:#fff; border-bottom:1px solid var(--line); }
   .top::before{ content:""; display:block; height:4px; background:linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853); }
-  .top__in{ max-width:760px; margin:0 auto; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .top__in{ max-width:760px; margin:0 auto; padding:12px 16px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 12px; }
   .logo{ display:inline-block; padding:7px 16px; border-radius:12px; color:#fff; font-weight:700; font-size:14px; text-decoration:none;
          background:linear-gradient(135deg,#4285F4,#34A853); white-space:nowrap; }
   .top__link{ font-size:13px; font-weight:700; text-decoration:none; white-space:nowrap; }
