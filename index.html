@@ -1452,6 +1452,35 @@ window.EVENT_CONFIG = {
         </div>
       </div>
 
+      <!-- 対面参加時のみ表示：写真撮影・掲載の同意 ==================================== -->
+      <div id="onsite-consent" class="rounded-xl p-5"
+           style="background:linear-gradient(135deg,rgba(251,188,5,.08),rgba(234,67,53,.05));
+                  border:1px solid rgba(249,171,0,.35);">
+        <div class="flex items-center gap-2 mb-4 flex-wrap">
+          <i data-lucide="camera" class="w-5 h-5" style="color:#E37400;"></i>
+          <div class="text-sm font-bold" style="color:var(--fg);">対面参加に関する同意事項</div>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto"
+                style="background:var(--danger); color:#fff;">必須</span>
+        </div>
+
+        <div class="space-y-2">
+          <label class="consent-item">
+            <input type="checkbox" name="consent" value="写真撮影・掲載同意" class="consent-check" required />
+            <div class="consent-body">
+              <div class="consent-title">当日の様子を <span class="consent-kw">写真撮影</span> し、<span class="consent-kw">ホームページ・活動報告等に掲載</span> します</div>
+              <div class="consent-desc">
+                当社ホームページ、SNS、活動報告、次回以降のご案内などに使用することがあります。
+                <strong style="color:var(--fg);">顔が写ることを希望されない方は、当日スタッフにお申し出ください</strong>（写らないよう配慮・加工します）。
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div id="onsite-consent-error" class="hidden mt-3 text-xs font-bold" style="color:var(--danger);">
+          ⚠ 同意（チェック）が必要です。
+        </div>
+      </div>
+
       <!-- 申込む回の確認（会場・時間の取り違え防止） -->
       <div id="form-event-summary" class="hidden rounded-xl px-4 py-3 text-sm"
            style="background:var(--bg-2); border:1px solid var(--line);">
@@ -1844,6 +1873,18 @@ window.EVENT_CONFIG = {
         // 対面時は required を外し、チェックも解除しておく
         consentBlock.querySelectorAll(".consent-check").forEach(cb => { cb.required = false; cb.checked = false; });
       }
+    }
+
+    // 対面参加時の同意チェック欄（写真撮影・掲載）の表示切替
+    const onsiteBlock = document.getElementById("onsite-consent");
+    if (onsiteBlock) {
+      onsiteBlock.classList.toggle("hidden", isOnline);
+      onsiteBlock.querySelectorAll(".consent-check").forEach(cb => {
+        cb.required = !isOnline;
+        if (isOnline) cb.checked = false;
+      });
+      const onsiteErr = document.getElementById("onsite-consent-error");
+      if (onsiteErr) onsiteErr.classList.add("hidden");
     }
 
     // 参加方法別CTA（対面 / Zoom）の有効・無効を切替
@@ -2629,11 +2670,12 @@ window.EVENT_CONFIG = {
     // （任意チェックはチェックされていれば値を記録、未チェックでもブロックしない）
     const joinModeInput = document.getElementById("joinMode-input");
     const isOnlineJoin = joinModeInput && joinModeInput.value === "オンライン";
-    const consentBlock = document.getElementById("online-consent");
-    const consentError = document.getElementById("consent-error");
+    // 対面参加時は「写真撮影・掲載」の同意欄を同じ仕組みで確認する
+    const consentBlock = document.getElementById(isOnlineJoin ? "online-consent" : "onsite-consent");
+    const consentError = document.getElementById(isOnlineJoin ? "consent-error" : "onsite-consent-error");
     const consentChecks = consentBlock ? consentBlock.querySelectorAll(".consent-check") : [];
     const consentValues = [];
-    if (isOnlineJoin && consentChecks.length) {
+    if (consentChecks.length) {
       let requiredAllChecked = true;
       consentChecks.forEach(cb => {
         if (cb.checked) consentValues.push(cb.value);
