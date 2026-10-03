@@ -74,7 +74,8 @@ const DEFAULT_CONFIG_SECTIONS = [
     ["会場住所",   "（住所を入力）"],
     ["地図リンク", "https://maps.app.goo.gl/rYUED1nsaJ7CEat17"],
     ["地図埋込URL","https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d894.865614533331!2d127.6954395!3d26.2141591!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x34e569cb16dea07d%3A0x1a20f9f3ebacd842!2z44OE44Oc44OQ44OrQ2FmZe-8hkJhcg!5e0!3m2!1sja!2sjp!4v1778600875620!5m2!1sja!2sjp"],
-    ["駐車場",     "先着4台店舗前 / 近隣コインパーキングあり（有料）"]
+    ["駐車場",     "先着4台店舗前 / 近隣コインパーキングあり（有料）"],
+    ["案内画像URL", ""]  // 通常会場の会場・駐車場の案内画像（ページの地図下とメール添付に使用。空欄なら画像なし）
   ]},
   { title: "【オンライン（Zoomの回で使用）】", rows: [
     ["オンラインURL",      "https://us06web.zoom.us/j/3153579574?omn=87316322450"],
@@ -745,7 +746,8 @@ function readConfig_(ss) {
     var d = parseDate_(v.date);
     var customVenue = !!v.venue;
     var venue   = customVenue ? v.venue : (cfg["会場名"] || "");
-    var address = customVenue ? (v.address || "") : (cfg["会場住所"] || "");
+    // 通常会場の住所が未入力（初期値「（住所を入力）」）のままなら空として扱う
+    var address = customVenue ? (v.address || "") : (/^（.*入力.*）$/.test(cfg["会場住所"] || "") ? "" : (cfg["会場住所"] || ""));
     var q = encodeURIComponent((venue + " " + address).trim());
     var open = v.open ? (v.open === "受付中") : (s.key === "次回");
     schedule.push({
@@ -766,7 +768,9 @@ function readConfig_(ss) {
       capacity:    Number(v.capacity) || Number(cfg["定員"]) || 10,
       // 駐車場案内：行に入力があればそれ。別会場で未入力なら空（通常会場の駐車場案内を出さない）
       parking:     v.parking || (customVenue ? "" : (cfg["駐車場"] || "")),
-      guideImage:  /^https:\/\//.test(v.guideImage || "") ? v.guideImage : ""
+      // 案内画像：行に入力があればそれ。通常会場の回は【会場】の「案内画像URL」を使う
+      guideImage:  (function(u) { return /^https:\/\//.test(u) ? u : ""; })(
+                     (v.guideImage || (customVenue ? "" : (cfg["案内画像URL"] || ""))).toString().trim())
     });
   });
 
