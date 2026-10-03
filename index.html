@@ -623,7 +623,7 @@ window.EVENT_CONFIG = {
       word-break:break-word;
     }
     /* ファクトボックス（DATE/TIME/FEE/DURATION）：モバイルはボックス余白を詰める */
-    .hero-title ~ .grid > div{ padding:14px !important; }
+    .hero-title ~ .grid.grid-cols-2 > div{ padding:14px !important; }
     /* 開催詳細セクションの大きな日付表示も溢れ対策 */
     #detail-date{ font-size:20px !important; }
 
@@ -854,10 +854,10 @@ window.EVENT_CONFIG = {
         <p class="text-lg leading-relaxed max-w-xl mb-10" style="color:var(--fg-dim);" data-anim="up" id="catch-copy"></p>
 
         <!-- 参加方法別CTA（開催形式に応じて有効/無効が切り替わる） -->
-        <div class="flex flex-wrap items-stretch gap-3 mb-4" data-anim="up">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 max-w-md" data-anim="up">
           <div class="flex flex-col">
             <a id="cta-offline" href="#apply" data-cta-format="対面"
-               class="btn-primary inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm">
+               class="btn-primary w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm whitespace-nowrap">
               <i data-lucide="map-pin" class="w-4 h-4"></i>
               <span>対面で参加する</span>
             </a>
@@ -865,15 +865,15 @@ window.EVENT_CONFIG = {
           </div>
           <div class="flex flex-col">
             <a id="cta-online" href="#apply" data-cta-format="オンライン"
-               class="btn-primary inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm">
+               class="btn-primary w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm whitespace-nowrap">
               <i data-lucide="video" class="w-4 h-4"></i>
               <span>Zoomで参加する</span>
             </a>
             <div id="cta-online-note" class="hidden mt-1.5 text-xs text-center" style="color:var(--danger);"></div>
           </div>
         </div>
-        <div class="mb-10" data-anim="up">
-          <a href="#about" class="btn-ghost inline-flex items-center gap-2 px-6 py-3.5 text-sm">
+        <div class="mb-10 max-w-md" data-anim="up">
+          <a href="#about" class="btn-ghost w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm">
             <i data-lucide="chevron-down" class="w-4 h-4"></i>
             <span>詳細を確認する</span>
           </a>
