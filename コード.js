@@ -77,7 +77,7 @@ const DEFAULT_CONFIG_SECTIONS = [
     ["駐車場",     "先着4台店舗前 / 近隣コインパーキングあり（有料）"]
   ]},
   { title: "【オンライン（Zoomの回で使用）】", rows: [
-    ["オンラインURL",      ""],
+    ["オンラインURL",      "https://us06web.zoom.us/j/3153579574?omn=87316322450"],
     ["オンライン注意事項", "開催前日までにZoom URLをメールでお送りします。"]
   ]},
   { title: "【その他】", rows: [
@@ -203,7 +203,10 @@ function slotKeyOf_(label) {
 // 設定シートを新レイアウトで書き出す（sched: {次回:{date,format,theme},...}, kv: {項目:値}）
 function writeConfigLayout_(sheet, sched, kv) {
   sheet.clear();
-  sheet.getDataRange().clearDataValidations();
+  // シート全体の入力規則・結合を解除（古いプルダウンが残ると書き込みが弾かれて途中で止まる）
+  var all = sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns());
+  all.clearDataValidations();
+  all.breakApart();
   sheet.setFrozenRows(0);
   var W = SCHED_WIDTH;
   var dv = function(list) { return SpreadsheetApp.newDataValidation().requireValueInList(list, true).setAllowInvalid(true).build(); };
