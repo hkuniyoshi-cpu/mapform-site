@@ -34,6 +34,9 @@ const ADMIN_EMAIL  = "h.kuniyoshi@search-mania.net";
 
 const CONFIG_SHEET = "設定";
 const MASTER_SHEET = "申込一覧";
+// 特別会の開催実績（固定ページ /event/日付/ とトップの一覧の元データ。特別会の行から自動で同期）
+const ARCHIVE_SHEET = "開催実績";
+const ARCHIVE_COLS  = ["開催日", "地域", "会場名", "会場住所", "開催時間", "開催形式", "テーマ", "レポート（任意）", "写真URL（任意・改行区切り）", "非公開（✓で一覧に出さない）"];
 
 // 申込一覧（累積ログ）の列 — チェックボックスなし
 const MASTER_COLS = ["申込日時","開催ID","参加方法","お名前","メールアドレス","電話番号","店舗名・会社名","流入経路","ご質問・備考","同意項目"];
@@ -97,6 +100,7 @@ function onOpen() {
     .addSeparator()
     .addItem("⏭ 開催後：スケジュールを1つ繰り上げ", "shiftSchedule")
     .addItem("♻ 設定シートを新レイアウトに作り直す（値は引継ぎ）", "rebuildConfigSheet")
+    .addItem("🗂 特別会を「開催実績」に今すぐ反映", "syncArchiveMenu")
     .addItem("🔧 初期セットアップ（初回のみ）", "setupSheets")
     .addItem("⏰ リマインドトリガー設定",        "setupReminderTrigger")
     .addSeparator()
@@ -321,6 +325,11 @@ function shiftSchedule() {
     "その次：" + fmtSlot_(nx2) + "  → 次々回\n\n" +
     "（受付・種別・時間・会場・定員・駐車場案内・案内画像の列も一緒に繰り上がります）\n\n実行しますか？", ui.ButtonSet.OK_CANCEL);
   if (ok !== ui.Button.OK) return;
+  // 繰り上げで消える前に、特別会を開催実績へ残す（残せなかったら繰り上げない）
+  try { syncArchive_(ss, null, true); } catch (err) {
+    ui.alert("「開催実績」シートへの保存に失敗したため、繰り上げを中止しました。\n\n" + err.toString());
+    return;
+  }
   var blank = []; for (var i = 0; i < W; i++) blank.push("");
   sheet.getRange(idx["次回"], 2, 1, W).setValues([nx]);
   sheet.getRange(idx["次々回"], 2, 1, W).setValues([nx2]);
@@ -369,6 +378,7 @@ function doPost(e) {
     // メール送信
     if (data.email) sendConfirmationEmail_(data, ss);
     sendAdminNotification_(data, ss);
+    try { syncArchive_(ss); } catch (err2) {} // 特別会を開催実績へ同期
 
     return jsonOut_({ ok: true });
   } catch (err) {
@@ -392,6 +402,10 @@ function doGet(e) {
 
     if (action === "config") {
       return jsonOut_({ ok: true, config: readConfig_(ss) });
+    }
+
+    if (action === "events") {
+      return jsonOut_({ ok: true, events: listSpecialEvents_(ss) });
     }
 
     return jsonOut_({ ok: false, error: "unknown action" });
@@ -596,6 +610,7 @@ function sendReminders() {
 
   var ss  = SpreadsheetApp.getActiveSpreadsheet();
   var cfg = readConfig_(ss);
+  try { syncArchive_(ss, cfg); } catch (err) {} // 特別会を開催実績へ同期（毎朝）
 
   // スケジュール表のうち「3日後が開催日」の回すべてに送信（同時受付の特別会にも対応）
   (cfg.schedule || []).forEach(function(slot) {
@@ -814,6 +829,141 @@ function configForEvent_(ss, eventId) {
   c["駐車場"]     = slot.parking || "";
   c["案内画像"]   = slot.guideImage || "";
   return c;
+}
+
+// =============================================
+// 特別会の開催実績（固定ページ・一覧の元データ）
+// =============================================
+
+// 住所から地域名を取り出す（例「宮古島市平良西里7」→「宮古島」、「国頭郡恩納村…」→「恩納村」）
+function areaOf_(address) {
+  var a = (address || "").toString().replace(/^\s*〒?\d{3}-?\d{4}\s*/, "").replace(/^(沖縄県|.{2,3}[都道府県])/, "").replace(/^.{1,4}郡/, "");
+  var m = a.match(/^(.+?)(市|町|村)/);
+  if (!m) return "";
+  return m[2] === "市" ? m[1] : m[1] + m[2];
+}
+
+function archiveSheet_(ss, create) {
+  var sheet = ss.getSheetByName(ARCHIVE_SHEET);
+  if (!sheet && create) {
+    sheet = ss.insertSheet(ARCHIVE_SHEET);
+    sheet.appendRow(ARCHIVE_COLS);
+    sheet.getRange(1, 1, 1, ARCHIVE_COLS.length).setFontWeight("bold").setBackground("#4285F4").setFontColor("#FFFFFF");
+    sheet.setFrozenRows(1);
+    sheet.getRange(2, 1, 200, 1).setNumberFormat("@");
+    sheet.getRange(2, 5, 200, 1).setNumberFormat("@");
+    [110, 90, 260, 220, 120, 90, 240, 420, 320, 90].forEach(function(w, i) { sheet.setColumnWidth(i + 1, w); });
+    sheet.getRange(2, 8, 200, 2).setWrap(true);
+    sheet.getRange(2, 10, 200, 1).insertCheckboxes();
+    sheet.getRange(1, 1).setNote("スケジュール表で種別を「特別会」にした回が自動で入ります。\n地域・レポート・写真URL は手で書き換えてOK（自動同期で上書きされません）。\n開催前の回は、会場・時間・テーマがスケジュール表の内容に合わせて更新されます。");
+  }
+  return sheet;
+}
+
+// スケジュール表の特別会を「開催実績」へ追記・更新（開催日が同じ行は更新。地域・レポート・写真は上書きしない）
+// force=true：開催日を過ぎた回もスケジュール表の最終内容で更新する（繰り上げ直前に使用）
+function syncArchive_(ss, cfg, force) {
+  cfg = cfg || readConfig_(ss);
+  var specials = (cfg.schedule || []).filter(function(v) { return v.special && v.date; });
+  if (!specials.length) return 0;
+  // 申込み・リマインドが同時に走っても、同じ行に二重に書かないよう排他
+  var lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    return syncArchiveLocked_(ss, specials, force);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function syncArchiveLocked_(ss, specials, force) {
+  var sheet = archiveSheet_(ss, true);
+  var last = sheet.getLastRow();
+  var rows = last >= 2 ? sheet.getRange(2, 1, last - 1, ARCHIVE_COLS.length).getValues() : [];
+  var rowOf = {};
+  rows.forEach(function(r, i) { var k = archiveDateKey_(r[0]); if (k && !rowOf[k]) rowOf[k] = i + 2; });
+  var today = Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyy-MM-dd");
+  var n = 0;
+  specials.forEach(function(v) {
+    var auto = [v.venue || "", v.address || "", v.time || "", v.format || "対面", v.theme || ""];
+    var r = rowOf[v.date];
+    if (!r) {
+      // A列（開催日）が空の最初の行に追記（チェックボックス列があるので getLastRow は使えない）
+      r = 2;
+      while (rows[r - 2] && archiveDateKey_(rows[r - 2][0])) r++;
+      if (rows[r - 2]) rows[r - 2][0] = v.date; else rows.push([v.date]);
+      sheet.getRange(r, 1).setNumberFormat("@").setValue(v.date);
+      sheet.getRange(r, 5).setNumberFormat("@");
+      sheet.getRange(r, 2).setValue(areaOf_(v.address));
+      sheet.getRange(r, 3, 1, 5).setValues([auto]);
+      rowOf[v.date] = r; n++;
+    } else if (force || v.date >= today) {
+      // 開催前は会場・時間などの変更を追従。開催後は記録を固定（スケジュール表を書き換えても変わらない）
+      sheet.getRange(r, 3, 1, 5).setValues([auto]);
+      if (!sheet.getRange(r, 2).getValue()) sheet.getRange(r, 2).setValue(areaOf_(v.address));
+    }
+  });
+  return n;
+}
+
+function syncArchiveMenu() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var n = syncArchive_(ss);
+  SpreadsheetApp.getUi().alert("✅ 「開催実績」シートを更新しました（新規 " + n + " 件）。\n\n" +
+    "ページへの反映には最大10分ほどかかります。\n開催後に「レポート」「写真URL」を入れると、その回のページに掲載されます。");
+}
+
+function archiveDateKey_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, "Asia/Tokyo", "yyyy-MM-dd");
+  var d = parseDate_(v);
+  return d ? Utilities.formatDate(d, "Asia/Tokyo", "yyyy-MM-dd") : "";
+}
+
+// 特別会の一覧（開催実績シート＋スケジュール表の特別会）を新しい順に返す。読み取りのみ
+function listSpecialEvents_(ss) {
+  var cfg = readConfig_(ss);
+  var today = Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyy-MM-dd");
+  var byDate = {};
+  var str = function(v) { return (v === null || v === undefined) ? "" : v.toString().trim(); };
+  var mk = function(date) {
+    var d = parseDate_(date);
+    return { date: date, dateLabel: d ? formatJpDate_(d) : date, area: "", venue: "", address: "", time: "", format: "対面",
+             theme: "", report: "", photos: [], guideImage: "", parking: "", mapUrl: "", open: false, ended: date < today };
+  };
+  var sheet = archiveSheet_(ss, false);
+  if (sheet && sheet.getLastRow() >= 2) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, ARCHIVE_COLS.length).getValues().forEach(function(r) {
+      var date = archiveDateKey_(r[0]);
+      if (!date) return;
+      var e = mk(date);
+      e.area = str(r[1]); e.venue = str(r[2]); e.address = str(r[3]);
+      e.time = (r[4] instanceof Date) ? Utilities.formatDate(r[4], "Asia/Tokyo", "H:mm") : str(r[4]);
+      e.format = str(r[5]) || "対面"; e.theme = str(r[6]); e.report = str(r[7]);
+      e.photos = str(r[8]).split(/[\s,]+/).filter(function(u) { return /^https:\/\//.test(u); }).slice(0, 12);
+      e.hidden = r[9] === true;
+      byDate[date] = e;
+    });
+  }
+  // スケジュール表にある特別会（まだ開催実績に入っていない回も一覧に出す／開催前は最新の内容を使う）
+  (cfg.schedule || []).forEach(function(v) {
+    if (!v.special || !v.date) return;
+    var e = byDate[v.date];
+    if (!e) { e = byDate[v.date] = mk(v.date); e.area = areaOf_(v.address); }
+    if (!e.ended || !e.venue) {
+      e.venue = v.venue || ""; e.address = v.address || ""; e.time = v.time || ""; e.format = v.format || "対面"; e.theme = v.theme || "";
+      if (!e.area) e.area = areaOf_(v.address);
+    }
+    e.guideImage = v.guideImage || ""; e.parking = v.parking || "";
+    e.open = !!v.open && !e.ended;
+  });
+  var list = Object.keys(byDate).map(function(k) { return byDate[k]; }).filter(function(e) { return !e.hidden; });
+  list.forEach(function(e) {
+    delete e.hidden;
+    var q = encodeURIComponent((e.venue + " " + e.address).trim());
+    e.mapUrl = q ? "https://www.google.com/maps/search/?api=1&query=" + q : "";
+  });
+  list.sort(function(a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+  return list;
 }
 
 // 値（Date型/文字列）を Date に変換。失敗時は null

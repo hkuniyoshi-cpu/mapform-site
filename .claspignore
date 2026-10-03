@@ -22,3 +22,7 @@ functions/**
 *.txt
 *.src
 *.xml
+lib/**
+venue/**
+*.mjs
+.wrangler/**

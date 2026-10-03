@@ -467,6 +467,25 @@ window.EVENT_CONFIG = {
     .consent-desc{ font-size:11.5px; }
   }
 
+  /* ===== これまでの特別開催（一覧） ===== */
+  .sp-arc{ display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:14px; text-decoration:none;
+           background:#fff; border:1px solid var(--line); color:var(--fg); transition:border-color .15s, box-shadow .15s; }
+  .sp-arc:hover{ border-color:rgba(66,133,244,.5); box-shadow:0 2px 12px rgba(66,133,244,.12); }
+  .sp-arc__date{ flex:none; font-size:13px; font-weight:700; color:var(--fg-dim); white-space:nowrap; }
+  .sp-arc__body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .sp-arc__title{ font-weight:800; font-size:15px; }
+  .sp-arc__venue{ font-weight:500; font-size:12px; color:var(--fg-dim); margin-left:8px; }
+  .sp-arc__theme{ font-size:12px; color:var(--fg-dim); overflow-wrap:anywhere; }
+  .sp-arc__status{ flex:none; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:800; white-space:nowrap; background:#F1F3F4; color:var(--fg-dim); }
+  .sp-arc--open .sp-arc__status{ background:#E6F4EA; color:#137333; }
+  .sp-arc--soon .sp-arc__status{ background:#EAF2FE; color:#1A73E8; }
+  @media (max-width:560px){
+    .sp-arc{ flex-wrap:wrap; gap:4px 10px; }
+    .sp-arc__body{ flex-basis:100%; order:3; }
+    .sp-arc__venue{ display:block; margin-left:0; }
+    .sp-arc__status{ margin-left:auto; }
+  }
+
   /* ===== 回の選択（複数回同時受付） ===== */
   .event-picker{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
   .event-pick{
@@ -1570,6 +1589,20 @@ window.EVENT_CONFIG = {
   </div>
 </section>
 
+<!-- ====================== これまでの特別開催（出張開催など） ======================
+     設定シートで種別を「特別会」にした回が自動で載り、開催後も残る。
+     中身は Cloudflare Pages Function（functions/index.js）が HTML に書き込む。取得できなかった時だけ下のスクリプトが後から表示する -->
+<section id="special-archive" class="section-pad" style="background:var(--bg-2);" hidden>
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-10">
+    <div class="text-center">
+      <div class="eyebrow inline-flex mb-4">Special sessions</div>
+      <h2 class="section-title mb-2">特別開催の実績・予定</h2>
+      <p class="text-sm mb-8" style="color:var(--fg-dim);">いつもの会場以外で行う、出張開催などの特別会です。各回の詳細ページをご覧いただけます。</p>
+    </div>
+    <div id="special-archive-list" class="space-y-3"></div>
+  </div>
+</section>
+
 <!-- ====================== FOOTER ====================== -->
 <footer style="background:#202124; color:#9AA0A6;" class="py-14 mt-0">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
@@ -2074,6 +2107,35 @@ window.EVENT_CONFIG = {
     });
   }
 
+  // これまでの特別開催：サーバー側で一覧が書き込まれていない時（取得が間に合わなかった時・ローカル確認時）だけ、後から表示する
+  async function loadSpecialArchive() {
+    const sec = document.getElementById("special-archive"), list = document.getElementById("special-archive-list");
+    if (!sec || !list || list.dataset.ssr === "1") return;
+    try {
+      const res = await fetch(`${cfg.gasUrl}?action=events`, { cache: "no-store" });
+      const json = await res.json();
+      const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+      const evs = (json.ok && Array.isArray(json.events) ? json.events : []).filter(e => /^\d{4}-\d{2}-\d{2}$/.test(e.date || ""));
+      if (!evs.length) return;
+      list.innerHTML = evs.map(e => {
+        const ended = e.date < today, open = !!e.open && !ended;
+        const key = ended ? "ended" : open ? "open" : "soon", label = ended ? "開催終了" : open ? "受付中" : "開催予定";
+        const place = e.format === "オンライン" ? "オンライン（Zoom）" : (e.venue || "");
+        const theme = /^(調整中|未定)$/.test(e.theme || "") ? "" : (e.theme || "");
+        return `<a class="sp-arc sp-arc--${key}" href="/event/${esc(e.date)}/">
+          <span class="sp-arc__date">${esc(e.dateLabel || e.date)}</span>
+          <span class="sp-arc__body">
+            <span class="sp-arc__title">${esc(e.area ? e.area + "開催" : "特別開催")}${place ? `<span class="sp-arc__venue">${esc(place)}</span>` : ""}</span>
+            ${theme ? `<span class="sp-arc__theme">テーマ：${esc(theme)}</span>` : ""}
+          </span>
+          <span class="sp-arc__status">${label}</span>
+        </a>`;
+      }).join("");
+      sec.hidden = false;
+      if (window.ScrollTrigger) ScrollTrigger.refresh();
+    } catch (err) { console.error("[events]", err); }
+  }
+
   function selectEvent(slot) {
     if (!slot) return;
     currentSlot = slot;
@@ -2311,8 +2373,11 @@ window.EVENT_CONFIG = {
       // 告知バナー：特例告知が優先。無ければ、受付中に特別会がある時に自動表示
       updateNotice();
 
-      if (EVENTS.length) selectEvent(EVENTS[0]);
+      const wanted = new URLSearchParams(location.search).get("event");
+      if (EVENTS.length) selectEvent(EVENTS.find(v => v.date === wanted) || EVENTS[0]);
       else { applyEventFormat((c["開催形式"] || "対面").toString().trim(), c); fetchRemainingSeats(); }
+
+      loadSpecialArchive();
 
       // 動的に内容が変わったのでScrollTriggerの位置を再計算（表示崩れ防止）
       if (window.ScrollTrigger) ScrollTrigger.refresh();
