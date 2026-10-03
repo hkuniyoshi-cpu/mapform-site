@@ -469,13 +469,29 @@ window.EVENT_CONFIG = {
   /* ===== 回の選択（複数回同時受付） ===== */
   .event-picker{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
   .event-pick{
-    text-align:left; padding:10px 12px; border-radius:12px; cursor:pointer;
+    /* 中身は上詰め。カードごとに行数が違っても 日付／時間／形式 の行が横に揃う */
+    display:flex; flex-direction:column; justify-content:flex-start; align-items:stretch;
+    text-align:left; padding:0; border-radius:12px; cursor:pointer; overflow:hidden;
     background:#fff; border:2px solid var(--line); transition:border-color .15s, box-shadow .15s;
   }
   .event-pick:hover{ border-color:rgba(66,133,244,.5); }
-  .event-pick.is-active{ border-color:#4285F4; box-shadow:0 2px 12px rgba(66,133,244,.2); background:#F5F9FF; }
-  .event-pick__date{ font-weight:800; font-size:14px; color:var(--fg); white-space:nowrap; }
+  .event-pick.is-special{ border-color:#F9AB00; background:#FFFBEB; }
+  .event-pick.is-active{ border-color:#4285F4; box-shadow:0 0 0 3px rgba(66,133,244,.22); background:#F5F9FF; }
+  .event-pick.is-special.is-active{ background:#FFFBEB; }
+  .event-pick__band{
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+    padding:4px 12px; font-size:11px; font-weight:800; letter-spacing:.06em; white-space:nowrap;
+    background:#F1F3F4; color:var(--fg-dim);
+  }
+  .event-pick.is-special .event-pick__band{ background:#FBBC05; color:#202124; }
+  .event-pick__on{ display:none; font-size:10px; letter-spacing:0; color:#1A73E8; }
+  .event-pick.is-special .event-pick__on{ color:#202124; }
+  .event-pick.is-active .event-pick__on{ display:inline; }
+  .event-pick__body{ padding:9px 12px 11px; }
+  .event-pick__date{ font-weight:800; font-size:15px; color:var(--fg); white-space:nowrap; }
   .event-pick__meta{ font-size:11px; color:var(--fg-dim); margin-top:3px; line-height:1.5; }
+  .event-pick__time{ font-size:12px; font-weight:700; color:var(--fg); margin-top:3px; white-space:nowrap; }
+  .event-pick__venue{ font-size:11px; color:var(--fg-dim); line-height:1.45; margin-top:1px; overflow-wrap:anywhere; }
   .tag-special{ display:inline-block; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:800;
                 background:#FBBC05; color:#202124; white-space:nowrap; }
 
@@ -1935,14 +1951,54 @@ window.EVENT_CONFIG = {
 
   function renderEventPickers() {
     const multi = EVENTS.length > 1;
-    const html = EVENTS.map(v => `<button type="button" class="event-pick ${currentSlot && currentSlot.date === v.date ? "is-active" : ""}" data-pick="${esc(v.date)}">
-        <div class="event-pick__date">${esc(shortDate(v))} ${v.special ? '<span class="tag-special">特別会</span>' : ""}</div>
-        <div class="event-pick__meta">${esc(v.time || "")}<br>${v.format === "オンライン" ? "Zoom（オンライン）" : "対面：" + esc(v.venue || "")}</div>
-      </button>`).join("");
-    document.querySelectorAll("[data-event-picker]").forEach(el => { el.innerHTML = html; });
+    // 行構成を全カード共通に固定（帯／日付／時間／形式／会場名）。長い会場名は最下段だけで折り返す
+    const html = EVENTS.map(v => { const on = currentSlot && currentSlot.date === v.date; return `<button type="button" class="event-pick ${on ? "is-active" : ""} ${v.special ? "is-special" : ""}" data-pick="${esc(v.date)}" aria-pressed="${on}">
+        <div class="event-pick__band"><span>${v.special ? "★ 特別会" : "通常回"}</span><span class="event-pick__on">✓ 選択中</span></div>
+        <div class="event-pick__body">
+          <div class="event-pick__date">${esc(shortDate(v))}</div>
+          <div class="event-pick__time">${esc(v.time || "") || "&nbsp;"}</div>
+          <div class="event-pick__meta">${v.format === "オンライン" ? "Zoom（オンライン）" : "対面"}</div>
+          ${v.format === "オンライン" ? "" : `<div class="event-pick__venue">${esc(v.venue || "")}</div>`}
+        </div>
+      </button>`; }).join("");
+    document.querySelectorAll("[data-event-picker]").forEach(el => {
+      // 再描画でキーボードフォーカスが外れないよう、押していたカードに戻す
+      const focused = el.contains(document.activeElement) ? document.activeElement.getAttribute("data-pick") : null;
+      el.setAttribute("role", "group"); el.setAttribute("aria-label", "参加する回を選ぶ");
+      el.innerHTML = html;
+      if (focused) { const b = [...el.querySelectorAll("[data-pick]")].find(x => x.getAttribute("data-pick") === focused); if (b) b.focus({ preventScroll: true }); }
+    });
     ["event-tabs", "form-event-picker"].forEach(id => {
       const el = document.getElementById(id); if (el) el.classList.toggle("hidden", !multi);
     });
+  }
+
+  // 告知バナー：設定シートの「特例告知」は常時表示。
+  // 特別会の自動告知は、特別会のカードを選んでいる間だけ表示する
+  let noticeFitted = false;
+  function updateNotice() {
+    const noticeEl = document.getElementById("special-notice");
+    const noticeText = document.getElementById("special-notice-text");
+    if (!noticeEl || !noticeText) return;
+    const manual = ((lastConfig || {})["特例告知"] || "").toString().trim();
+    const spEv = currentSlot && currentSlot.special ? currentSlot : EVENTS.find(v => v.special);
+    const text = manual || (spEv ? `【特別会】${shortDate(spEv)}は、いつもと会場・時間が異なります` : "");
+    if (!text) return;
+    const show = !!manual || !!(currentSlot && currentSlot.special);
+    noticeText.textContent = text;
+    noticeEl.classList.remove("hidden");
+    // 帯の場所は確保したまま出し入れする（カードを切り替えた瞬間に画面がガクッと動かないように）
+    noticeEl.style.transition = "opacity .25s";
+    noticeEl.style.opacity = show ? "1" : "0";
+    noticeEl.style.visibility = show ? "visible" : "hidden";
+    noticeEl.setAttribute("aria-hidden", show ? "false" : "true");
+    if (noticeFitted) return;
+    noticeFitted = true;
+    // 帯の高さ分だけヒーロー上部の余白を広げ、下の文字と重ならないようにする
+    const fitNotice = () => { document.getElementById("top").style.paddingTop = (noticeEl.offsetTop + noticeEl.offsetHeight + 28) + "px"; };
+    fitNotice(); window.addEventListener("resize", fitNotice);
+    // Webフォント読込後など、リサイズ以外で帯の高さが変わった場合にも追従
+    if (window.ResizeObserver) new ResizeObserver(fitNotice).observe(noticeEl);
   }
 
   function selectEvent(slot) {
@@ -1994,6 +2050,7 @@ window.EVENT_CONFIG = {
     }
 
     renderEventPickers();
+    updateNotice();
     resetSoldOutState();
     fetchRemainingSeats();
   }
@@ -2167,14 +2224,7 @@ window.EVENT_CONFIG = {
       if (!EVENTS.length) EVENTS = sched.filter(v => v.date).slice(0, 1);
 
       // 告知バナー：特例告知が優先。無ければ、受付中に特別会がある時に自動表示
-      const spEv = EVENTS.find(v => v.special);
-      const notice = (c["特例告知"] || "").toString().trim() ||
-        (spEv ? `【特別会】${shortDate(spEv)}は、いつもと会場・時間が異なります` : "");
-      if (notice) {
-        const noticeEl = document.getElementById("special-notice");
-        const noticeText = document.getElementById("special-notice-text");
-        if (noticeEl && noticeText) { noticeText.textContent = notice; noticeEl.classList.remove("hidden"); }
-      }
+      updateNotice();
 
       if (EVENTS.length) selectEvent(EVENTS[0]);
       else { applyEventFormat((c["開催形式"] || "対面").toString().trim(), c); fetchRemainingSeats(); }
